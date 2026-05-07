@@ -27,3 +27,9 @@ def test_audit_writes_workbook_index(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Workbook index written" in result.stdout
     assert Path(".sheetproof/workbook-index.json").exists()
+    assert Path(".sheetproof/formula-map.json").exists()
+    assert Path(".sheetproof/dependency-graph.json").exists()
+    assert Path(".sheetproof/sheetproof-report.md").exists()
+    assert Path(".sheetproof/sheetproof-report.json").exists()
+    assert Path(".sheetproof/risk-cells.csv").exists()
+    assert Path(".sheetproof/assumption-register.csv").exists()
