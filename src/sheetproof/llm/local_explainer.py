@@ -129,7 +129,7 @@ def explain_cell(workbook: Path, cell: str) -> str:
 
     provider = llm_cfg.get("provider", "local")
     if provider not in {"local", "ollama"}:
-        raise ValueError(f"Phase 3.1 supports only local Ollama provider. Got: {provider}")
+        raise ValueError(f"This build supports only local Ollama provider. Got: {provider}")
 
     model = llm_cfg.get("model", "qwen")
     base_url = llm_cfg.get("base_url", "http://localhost:11434")

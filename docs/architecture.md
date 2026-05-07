@@ -12,7 +12,7 @@ SheetProof follows a deterministic-first pipeline:
 
 No LLM output is allowed to alter risk scoring or factual findings.
 
-## Explain Path (Phase 3.1)
+## Explain Path
 
 - Provider: local Ollama (`/api/chat`)
 - Explain command is read-only and consumes existing deterministic artifacts:

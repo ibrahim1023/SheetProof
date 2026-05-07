@@ -6,7 +6,7 @@ This file maps repository artifacts to `agent_context.md` requirements.
 
 - `AGENTS.md`: present, includes commands, gates, guardrails, loop controls
 - `scope.md`: present, source design intent
-- `task.md`: present, phased tasks with acceptance + validation gates
+- `task.md`: present, structured tasks with acceptance + validation gates
 - `docs/decisions/`: present with ADR and process README
 - `agents/generated/`: present for generated orientation artifacts
 
@@ -37,5 +37,5 @@ This file maps repository artifacts to `agent_context.md` requirements.
 ## Open Gaps (Implementation, not policy)
 
 - Eval runner scripts not yet implemented
-- No observability/tracing implementation yet (planned for runtime phases)
+- No observability/tracing implementation yet (planned for later runtime milestones)
 - Hosted provider integrations (OpenAI/Anthropic/Gemini) intentionally deferred; Ollama local explain is implemented first

@@ -17,9 +17,9 @@ It focuses on deterministic spreadsheet auditing:
 ## Status
 
 Implemented:
-- Phase 1 deterministic audit pipeline
-- Phase 2 workbook diff pipeline
-- Phase 3.1 local explain (Ollama) with deterministic-artifact guardrails
+- deterministic audit pipeline
+- workbook diff pipeline
+- local explain (Ollama) with deterministic-artifact guardrails
 
 ## Quick Start
 
