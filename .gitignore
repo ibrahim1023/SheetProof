@@ -18,4 +18,8 @@ dependency-graph.json
 assumption-register.csv
 
 # Local-only planning/context files
+AGENTS.md
 agent_context.md
+scope.md
+task.md
+progress.md
