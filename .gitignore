@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual env
+.venv/
+
+# SheetProof runtime artifacts
+.sheetproof/
+sheetproof-report.md
+sheetproof-report.json
+risk-cells.csv
+formula-map.json
+dependency-graph.json
+assumption-register.csv
+
+# Local-only planning/context files
+AGENTS.md
+agent_context.md
+scope.md
+task.md
+progress.md

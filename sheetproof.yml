@@ -1,0 +1,31 @@
+project:
+  name: "Finance Model Review"
+
+risk:
+  high_risk_sheets:
+    - "Summary"
+    - "Dashboard"
+    - "Inputs"
+  volatile_functions:
+    warn:
+      - "INDIRECT"
+      - "OFFSET"
+      - "NOW"
+      - "RAND"
+  external_references:
+    severity: "high"
+  hidden_sheet_dependencies:
+    severity: "high"
+  hardcoded_overrides:
+    severity: "medium"
+
+report:
+  include_formula_inventory: true
+  include_dependency_graph: true
+  include_assumption_register: true
+  include_human_review_checklist: true
+
+llm:
+  enabled: false
+  provider: "local"
+  model: "qwen"
