@@ -3,6 +3,7 @@ from pathlib import Path
 import typer
 
 from sheetproof.assumptions.detector import detect_assumptions
+from sheetproof.diff.workbook_diff import compute_workbook_diff, render_diff_summary, write_workbook_diff
 from sheetproof.formulas.extractor import extract_formula_inventory, write_formula_map
 from sheetproof.graph.builder import build_dependency_graph
 from sheetproof.graph.export import write_dependency_graph
@@ -68,7 +69,15 @@ def audit(workbook: Path) -> None:
 @app.command()
 def diff(old_workbook: Path, new_workbook: Path) -> None:
     """Compare two workbook versions."""
-    typer.echo(f"[MVP scaffold] diff not implemented yet: {old_workbook} -> {new_workbook}")
+    if not old_workbook.exists():
+        raise typer.BadParameter(f"Old workbook not found: {old_workbook}")
+    if not new_workbook.exists():
+        raise typer.BadParameter(f"New workbook not found: {new_workbook}")
+
+    result = compute_workbook_diff(old_workbook, new_workbook)
+    out_path = write_workbook_diff(result, Path(".sheetproof"))
+    typer.echo(render_diff_summary(result))
+    typer.echo(f"Workbook diff written: {out_path}")
 
 
 @app.command()
