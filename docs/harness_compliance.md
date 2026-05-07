@@ -4,19 +4,16 @@ This file maps repository artifacts to `agent_context.md` requirements.
 
 ## Required Repository Context
 
-- `AGENTS.md`: present, includes commands, gates, guardrails, loop controls
-- `scope.md`: present, source design intent
-- `task.md`: present, structured tasks with acceptance + validation gates
 - `docs/decisions/`: present with ADR and process README
 - `agents/generated/`: present for generated orientation artifacts
 
 ## Session and State
 
-- `progress.md`: present for durable state and next-step continuity
+- durable local state tracking is used for execution continuity
 
 ## Validation Layer
 
-- Commands declared in `AGENTS.md`: `pytest`, `ruff check .`, `mypy src`
+- project validation commands: `pytest`, `ruff check .`, `mypy src`
 - Baseline tests present in `tests/`
 
 ## Evaluation Layer
@@ -30,7 +27,6 @@ This file maps repository artifacts to `agent_context.md` requirements.
 ## Deterministic vs LLM Boundary
 
 - Boundary documented in:
-  - `AGENTS.md`
   - `docs/architecture.md`
   - `docs/decisions/0001-deterministic-first.md`
 
