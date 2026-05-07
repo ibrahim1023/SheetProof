@@ -16,7 +16,10 @@ It focuses on deterministic spreadsheet auditing:
 
 ## Status
 
-Bootstrap scaffold for MVP architecture and harness controls is in place.
+Implemented:
+- Phase 1 deterministic audit pipeline
+- Phase 2 workbook diff pipeline
+- Phase 3.1 local explain (Ollama) with deterministic-artifact guardrails
 
 ## Quick Start
 
@@ -34,6 +37,18 @@ pytest
 sheetproof audit workbook.xlsx
 sheetproof diff old.xlsx new.xlsx
 sheetproof explain workbook.xlsx --cell "Summary!F12"
+```
+
+`explain` requirements:
+- run `audit` first for the same workbook (uses `.sheetproof` deterministic artifacts)
+- enable local LLM in config (`sheetproof.yml`):
+
+```yaml
+llm:
+  enabled: true
+  provider: "local"
+  model: "qwen"
+  base_url: "http://localhost:11434"
 ```
 
 ## Output Artifacts (target MVP)

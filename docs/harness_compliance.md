@@ -36,6 +36,6 @@ This file maps repository artifacts to `agent_context.md` requirements.
 
 ## Open Gaps (Implementation, not policy)
 
-- Core deterministic modules remain placeholder-only
-- No eval runner scripts yet (expected once LLM behavior is implemented)
+- Eval runner scripts not yet implemented
 - No observability/tracing implementation yet (planned for runtime phases)
+- Hosted provider integrations (OpenAI/Anthropic/Gemini) intentionally deferred; Ollama local explain is implemented first

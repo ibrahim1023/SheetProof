@@ -8,6 +8,7 @@ from sheetproof.formulas.extractor import extract_formula_inventory, write_formu
 from sheetproof.graph.builder import build_dependency_graph
 from sheetproof.graph.export import write_dependency_graph
 from sheetproof.graph.impact import compute_downstream_impact
+from sheetproof.llm.local_explainer import explain_cell
 from sheetproof.reports.csv_export import write_assumption_register_csv, write_risk_cells_csv
 from sheetproof.reports.json_report import write_json_report
 from sheetproof.reports.markdown import write_markdown_report
@@ -83,7 +84,13 @@ def diff(old_workbook: Path, new_workbook: Path) -> None:
 @app.command()
 def explain(workbook: Path, cell: str = typer.Option(..., "--cell")) -> None:
     """Explain logic for a specific cell."""
-    typer.echo(f"[MVP scaffold] explain not implemented yet: {workbook} :: {cell}")
+    if not workbook.exists():
+        raise typer.BadParameter(f"Workbook not found: {workbook}")
+    try:
+        explanation = explain_cell(workbook=workbook, cell=cell)
+    except (ValueError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(explanation)
 
 
 if __name__ == "__main__":

@@ -11,3 +11,15 @@ SheetProof follows a deterministic-first pipeline:
 7. Optionally produce local LLM explanations from deterministic outputs
 
 No LLM output is allowed to alter risk scoring or factual findings.
+
+## Explain Path (Phase 3.1)
+
+- Provider: local Ollama (`/api/chat`)
+- Explain command is read-only and consumes existing deterministic artifacts:
+  - `.sheetproof/sheetproof-report.json`
+  - `.sheetproof/formula-map.json`
+  - `.sheetproof/dependency-graph.json`
+- Guardrails:
+  - explain fails closed if required deterministic artifacts are missing
+  - explain fails if artifact workbook does not match requested workbook
+  - explain cannot write/modify findings, severities, or risk scores
