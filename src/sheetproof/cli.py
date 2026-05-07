@@ -2,13 +2,19 @@ from pathlib import Path
 
 import typer
 
+from sheetproof.workbook.parser import parse_workbook, write_workbook_index
+
 app = typer.Typer(help="Local-first spreadsheet audit and validation")
 
 
 @app.command()
 def audit(workbook: Path) -> None:
     """Audit a single workbook."""
-    typer.echo(f"[MVP scaffold] audit not implemented yet: {workbook}")
+    if not workbook.exists():
+        raise typer.BadParameter(f"Workbook not found: {workbook}")
+    index = parse_workbook(workbook)
+    out_path = write_workbook_index(index, Path(".sheetproof"))
+    typer.echo(f"Workbook index written: {out_path}")
 
 
 @app.command()
