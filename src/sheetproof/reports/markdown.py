@@ -57,6 +57,24 @@ def write_markdown_report(
             "- Confirm assumption values and ownership.",
             "- Validate external workbook reference trustworthiness.",
             "",
+            "## Lineage Evidence for High-Risk Findings",
+        ]
+    )
+
+    if high:
+        for f in high:
+            lines.append(
+                f"- `{f.sheet}!{f.cell}` path: "
+                f"{' -> '.join(f.dependency_path) if f.dependency_path else 'N/A'} | "
+                f"sources: {', '.join(f.source_cells) if f.source_cells else 'None'} | "
+                f"impacted outputs: {', '.join(f.impacted_outputs) if f.impacted_outputs else 'None'}"
+            )
+    else:
+        lines.append("- None")
+
+    lines.extend(
+        [
+            "",
             "## Evidence Appendix",
         ]
     )

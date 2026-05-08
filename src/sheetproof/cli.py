@@ -22,6 +22,7 @@ from sheetproof.risk.rules import (
     detect_volatile_formula_findings,
 )
 from sheetproof.risk.scorer import score_findings
+from sheetproof.risk.lineage import enrich_findings_with_lineage
 from sheetproof.workbook.parser import parse_workbook, write_workbook_index
 
 app = typer.Typer(help="Local-first spreadsheet audit and validation")
@@ -60,6 +61,7 @@ def audit(
     findings.extend(detect_broken_reference_findings(formulas))
     findings = dedupe_findings(findings)
     findings = score_findings(findings, impact)
+    findings = enrich_findings_with_lineage(findings, graph, impact)
 
     md_report = write_markdown_report(index, findings, assumptions, out_dir)
     json_report = write_json_report(index, formulas, findings, assumptions, out_dir)

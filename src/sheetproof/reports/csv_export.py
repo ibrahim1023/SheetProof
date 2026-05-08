@@ -10,7 +10,21 @@ from sheetproof.risk.findings import Finding
 def write_risk_cells_csv(findings: list[Finding], out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "risk-cells.csv"
-    rows = [["Type", "Severity", "Sheet", "Cell", "Title", "RiskScore", "Reason"]]
+    rows = [
+        [
+            "Type",
+            "Severity",
+            "Sheet",
+            "Cell",
+            "Title",
+            "RiskScore",
+            "Reason",
+            "SourceCells",
+            "DependencyPath",
+            "ImpactedOutputs",
+            "PathDepth",
+        ]
+    ]
     for item in sorted(findings, key=lambda x: (x.sheet, x.cell, x.type)):
         rows.append(
             [
@@ -21,6 +35,10 @@ def write_risk_cells_csv(findings: list[Finding], out_dir: Path) -> Path:
                 item.title,
                 item.risk_score,
                 item.deterministic_reason,
+                ";".join(item.source_cells),
+                " -> ".join(item.dependency_path),
+                ";".join(item.impacted_outputs),
+                item.path_depth,
             ]
         )
     write_stable_csv(out_file, rows)
