@@ -3,6 +3,7 @@ from pathlib import Path
 import typer
 
 from sheetproof.assumptions.detector import detect_assumptions
+from sheetproof.config.loader import load_config
 from sheetproof.diff.workbook_diff import compute_workbook_diff, render_diff_summary, write_workbook_diff
 from sheetproof.formulas.extractor import extract_formula_inventory, write_formula_map
 from sheetproof.graph.builder import build_dependency_graph
@@ -36,10 +37,20 @@ def audit(
         "--deterministic",
         help="Emit deterministic artifacts (suppresses volatile metadata fields).",
     ),
+    policy_pack: str | None = typer.Option(
+        None,
+        "--policy-pack",
+        help="Apply a deterministic policy pack (finance, compliance, operations).",
+    ),
 ) -> None:
     """Audit a single workbook."""
     if not workbook.exists():
         raise typer.BadParameter(f"Workbook not found: {workbook}")
+    try:
+        cfg = load_config(policy_pack=policy_pack)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    risk_policy = cfg.get("risk", {})
     out_dir = Path(".sheetproof")
     index = parse_workbook(workbook, deterministic=deterministic)
     index_path = write_workbook_index(index, out_dir)
@@ -51,20 +62,20 @@ def audit(
     impact = compute_downstream_impact(graph)
     graph_path = write_dependency_graph(graph, impact, out_dir)
 
-    assumptions = detect_assumptions(index, impact)
+    assumptions = detect_assumptions(index, impact, graph)
 
     findings = []
-    findings.extend(detect_formula_inconsistency_findings(formulas))
-    findings.extend(detect_hardcoded_override_findings(index))
-    findings.extend(detect_hidden_external_dependency_findings(index, formulas))
-    findings.extend(detect_volatile_formula_findings(formulas))
-    findings.extend(detect_broken_reference_findings(formulas))
+    findings.extend(detect_formula_inconsistency_findings(formulas, risk_policy))
+    findings.extend(detect_hardcoded_override_findings(index, risk_policy))
+    findings.extend(detect_hidden_external_dependency_findings(index, formulas, risk_policy))
+    findings.extend(detect_volatile_formula_findings(formulas, risk_policy))
+    findings.extend(detect_broken_reference_findings(formulas, risk_policy))
     findings = dedupe_findings(findings)
     findings = score_findings(findings, impact)
     findings = enrich_findings_with_lineage(findings, graph, impact)
 
     md_report = write_markdown_report(index, findings, assumptions, out_dir)
-    json_report = write_json_report(index, formulas, findings, assumptions, out_dir)
+    json_report = write_json_report(index, formulas, findings, assumptions, out_dir, risk_policy)
     risk_csv = write_risk_cells_csv(findings, out_dir)
     assumptions_csv = write_assumption_register_csv(assumptions, out_dir)
     repro_manifest = write_reproducibility_manifest(out_dir)
@@ -80,14 +91,22 @@ def audit(
 
 
 @app.command()
-def diff(old_workbook: Path, new_workbook: Path) -> None:
+def diff(
+    old_workbook: Path,
+    new_workbook: Path,
+    policy_pack: str | None = typer.Option(
+        None,
+        "--policy-pack",
+        help="Apply a deterministic policy pack (finance, compliance, operations).",
+    ),
+) -> None:
     """Compare two workbook versions."""
     if not old_workbook.exists():
         raise typer.BadParameter(f"Old workbook not found: {old_workbook}")
     if not new_workbook.exists():
         raise typer.BadParameter(f"New workbook not found: {new_workbook}")
 
-    result = compute_workbook_diff(old_workbook, new_workbook)
+    result = compute_workbook_diff(old_workbook, new_workbook, policy_pack=policy_pack)
     out_path = write_workbook_diff(result, Path(".sheetproof"))
     typer.echo(render_diff_summary(result))
     typer.echo(f"Workbook diff written: {out_path}")

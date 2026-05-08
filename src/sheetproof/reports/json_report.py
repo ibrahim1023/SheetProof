@@ -15,6 +15,7 @@ def write_json_report(
     findings: list[Finding],
     assumptions: list[Assumption],
     out_dir: Path,
+    effective_policy: dict | None = None,
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "sheetproof-report.json"
@@ -42,6 +43,8 @@ def write_json_report(
         ],
         "warnings": index.warnings,
     }
+    if effective_policy is not None:
+        payload["effective_policy"] = effective_policy
 
     write_stable_json(out_file, payload)
     return out_file
