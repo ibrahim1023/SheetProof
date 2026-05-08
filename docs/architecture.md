@@ -22,4 +22,23 @@ No LLM output is allowed to alter risk scoring or factual findings.
 - Guardrails:
   - explain fails closed if required deterministic artifacts are missing
   - explain fails if artifact workbook does not match requested workbook
-  - explain cannot write/modify findings, severities, or risk scores
+- explain cannot write/modify findings, severities, or risk scores
+
+## Deterministic Policy Layer
+
+- Policy packs (`finance`, `compliance`, `operations`) are applied through `--policy-pack`.
+- Policy packs deterministically control:
+  - finding severity overrides
+  - volatile formula handling mode (`allow`, `warn`, `deny`)
+  - high-risk sheet configuration
+- Config validation fails closed on schema/severity/mode errors.
+
+## Assumption Delta Layer
+
+- Assumptions include deterministic confidence and category fields.
+- Diff mode emits `assumption-diff.json` with:
+  - `old_value`
+  - `new_value`
+  - `absolute_change`
+  - `percent_change` (numeric)
+  - downstream impact cells

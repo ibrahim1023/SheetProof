@@ -11,6 +11,7 @@ It focuses on deterministic spreadsheet auditing:
 - hidden/external dependency detection
 - workbook diffing
 - assumption extraction
+- assumption delta tracking between workbook versions
 - risk scoring
 - evidence-backed report generation
 
@@ -35,7 +36,9 @@ pytest
 
 ```bash
 sheetproof audit workbook.xlsx
+sheetproof audit workbook.xlsx --policy-pack finance
 sheetproof diff old.xlsx new.xlsx
+sheetproof diff old.xlsx new.xlsx --policy-pack compliance
 sheetproof explain workbook.xlsx --cell "Summary!F12"
 ```
 
@@ -60,3 +63,15 @@ llm:
 - `formula-map.json`
 - `dependency-graph.json`
 - `assumption-register.csv`
+- `workbook-diff.json`
+- `assumption-diff.json`
+- `reproducibility-manifest.json`
+
+## Policy Packs
+
+Deterministic policy packs are supported:
+- `finance`
+- `compliance`
+- `operations`
+
+Use `--policy-pack` to apply one. Policy packs control deterministic severities, volatile-function handling, and high-risk sheet lists.
