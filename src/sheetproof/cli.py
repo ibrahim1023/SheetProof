@@ -12,6 +12,7 @@ from sheetproof.llm.local_explainer import explain_cell
 from sheetproof.reports.csv_export import write_assumption_register_csv, write_risk_cells_csv
 from sheetproof.reports.json_report import write_json_report
 from sheetproof.reports.markdown import write_markdown_report
+from sheetproof.reports.repro_manifest import write_reproducibility_manifest
 from sheetproof.risk.rules import (
     dedupe_findings,
     detect_broken_reference_findings,
@@ -27,12 +28,19 @@ app = typer.Typer(help="Local-first spreadsheet audit and validation")
 
 
 @app.command()
-def audit(workbook: Path) -> None:
+def audit(
+    workbook: Path,
+    deterministic: bool = typer.Option(
+        False,
+        "--deterministic",
+        help="Emit deterministic artifacts (suppresses volatile metadata fields).",
+    ),
+) -> None:
     """Audit a single workbook."""
     if not workbook.exists():
         raise typer.BadParameter(f"Workbook not found: {workbook}")
     out_dir = Path(".sheetproof")
-    index = parse_workbook(workbook)
+    index = parse_workbook(workbook, deterministic=deterministic)
     index_path = write_workbook_index(index, out_dir)
 
     formulas = extract_formula_inventory(index)
@@ -57,6 +65,7 @@ def audit(workbook: Path) -> None:
     json_report = write_json_report(index, formulas, findings, assumptions, out_dir)
     risk_csv = write_risk_cells_csv(findings, out_dir)
     assumptions_csv = write_assumption_register_csv(assumptions, out_dir)
+    repro_manifest = write_reproducibility_manifest(out_dir)
 
     typer.echo(f"Workbook index written: {index_path}")
     typer.echo(f"Formula map written: {formula_map_path}")
@@ -65,6 +74,7 @@ def audit(workbook: Path) -> None:
     typer.echo(f"Report written: {json_report}")
     typer.echo(f"Risk cells CSV written: {risk_csv}")
     typer.echo(f"Assumption register CSV written: {assumptions_csv}")
+    typer.echo(f"Reproducibility manifest written: {repro_manifest}")
 
 
 @app.command()

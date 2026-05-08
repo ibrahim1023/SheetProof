@@ -9,6 +9,7 @@ from sheetproof.formulas.references import (
     uses_cross_sheet_reference,
     uses_external_reference,
 )
+from sheetproof.reproducibility import write_stable_json
 from sheetproof.formulas.volatility import find_volatile_functions
 from sheetproof.workbook.models import WorkbookIndex
 
@@ -80,11 +81,7 @@ def formula_inventory_to_json_records(inventory: list[FormulaRecord]) -> list[di
 
 
 def write_formula_map(inventory: list[FormulaRecord], out_dir: Path) -> Path:
-    import json
-
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "formula-map.json"
-    out_file.write_text(
-        json.dumps(formula_inventory_to_json_records(inventory), indent=2), encoding="utf-8"
-    )
+    write_stable_json(out_file, formula_inventory_to_json_records(inventory))
     return out_file

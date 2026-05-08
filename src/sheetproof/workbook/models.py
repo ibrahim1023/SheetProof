@@ -31,7 +31,7 @@ class SheetIndex:
 class WorkbookIndex:
     workbook: str
     workbook_path: str
-    generated_at_utc: str
+    generated_at_utc: str | None
     sheet_count: int
     sheet_names: list[str]
     hidden_sheets: list[str]

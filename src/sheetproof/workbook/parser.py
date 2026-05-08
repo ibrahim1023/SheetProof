@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from openpyxl import load_workbook
 
+from sheetproof.reproducibility import write_stable_json
 from sheetproof.workbook.metadata import extract_workbook_metadata
 from sheetproof.workbook.models import CellRecord, SheetIndex, WorkbookIndex, utc_now_iso
 
@@ -19,7 +19,7 @@ def _extract_external_links(wb) -> list[str]:
     return sorted(set(links))
 
 
-def parse_workbook(path: Path) -> WorkbookIndex:
+def parse_workbook(path: Path, deterministic: bool = False) -> WorkbookIndex:
     wb = load_workbook(path, data_only=False)
 
     sheet_indexes: list[SheetIndex] = []
@@ -80,7 +80,7 @@ def parse_workbook(path: Path) -> WorkbookIndex:
     return WorkbookIndex(
         workbook=path.name,
         workbook_path=str(path.resolve()),
-        generated_at_utc=utc_now_iso(),
+        generated_at_utc=None if deterministic else utc_now_iso(),
         sheet_count=len(wb.sheetnames),
         sheet_names=wb.sheetnames,
         hidden_sheets=hidden_sheets,
@@ -96,5 +96,5 @@ def parse_workbook(path: Path) -> WorkbookIndex:
 def write_workbook_index(index: WorkbookIndex, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "workbook-index.json"
-    out_file.write_text(json.dumps(index.to_dict(), indent=2, default=str), encoding="utf-8")
+    write_stable_json(out_file, index.to_dict())
     return out_file
