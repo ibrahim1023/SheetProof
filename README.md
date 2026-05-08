@@ -39,6 +39,8 @@ sheetproof audit workbook.xlsx
 sheetproof audit workbook.xlsx --policy-pack finance
 sheetproof diff old.xlsx new.xlsx
 sheetproof diff old.xlsx new.xlsx --policy-pack compliance
+sheetproof gate --workbook workbook.xlsx --max-high-risk-findings 5 --max-external-references 0
+sheetproof gate --old-workbook old.xlsx --new-workbook new.xlsx --max-new-hidden-sheets 0
 sheetproof explain workbook.xlsx --cell "Summary!F12"
 ```
 
