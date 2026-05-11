@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
+import uuid
 from typing import Callable
 
 from sheetproof.llm.schemas import StructuredExplanation
@@ -24,6 +26,7 @@ def run_explain_flow(
     write_trace(
         {
             "event": "explain_start",
+            "request_id": str(uuid.uuid4()),
             "workbook": cfg.workbook_name,
             "cell": cfg.cell,
             "model": cfg.model,
@@ -31,6 +34,7 @@ def run_explain_flow(
     )
 
     prompt = build_prompt()
+    start = time.perf_counter()
     last_err: Exception | None = None
     for attempt in range(cfg.max_retries + 1):
         try:
@@ -40,15 +44,31 @@ def run_explain_flow(
                     "attempt": attempt,
                     "provider": "ollama",
                     "model": cfg.model,
+                    "prompt_chars": len(prompt),
                 }
             )
             raw = provider_call(prompt)
             parsed = StructuredExplanation.model_validate_json(raw)
-            write_trace({"event": "explain_success", "attempt": attempt, "cell": cfg.cell})
+            write_trace(
+                {
+                    "event": "explain_success",
+                    "attempt": attempt,
+                    "cell": cfg.cell,
+                    "latency_ms": int((time.perf_counter() - start) * 1000),
+                    "output_chars": len(raw),
+                }
+            )
             return parsed
         except Exception as exc:  # noqa: BLE001
             last_err = exc
-            write_trace({"event": "explain_retry", "attempt": attempt, "error": str(exc)})
+            write_trace(
+                {
+                    "event": "explain_retry",
+                    "attempt": attempt,
+                    "error": str(exc),
+                    "latency_ms": int((time.perf_counter() - start) * 1000),
+                }
+            )
 
     assert last_err is not None
     write_trace({"event": "explain_failed", "cell": cfg.cell, "error": str(last_err)})

@@ -55,6 +55,9 @@ llm:
   provider: "local"
   model: "qwen"
   base_url: "http://localhost:11434"
+  timeout_seconds: 40
+  max_retries: 2
+local_only: false
 ```
 
 Supported providers:
@@ -62,6 +65,8 @@ Supported providers:
 - `openai`
 - `anthropic`
 - `gemini`
+
+If `local_only: true`, hosted providers are blocked.
 
 ## Output Artifacts (target MVP)
 

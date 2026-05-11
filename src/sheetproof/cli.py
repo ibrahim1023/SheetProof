@@ -288,6 +288,7 @@ def gate(
 def eval_explain(
     dataset: Path = typer.Option(Path("evals/datasets/explain_schema_cases.json"), "--dataset"),
     output: Path = typer.Option(Path("evals/results/explain_eval_results.json"), "--output"),
+    min_pass_rate: float = typer.Option(1.0, "--min-pass-rate"),
 ) -> None:
     """Run explanation schema evals."""
     if not dataset.exists():
@@ -296,7 +297,7 @@ def eval_explain(
     typer.echo(
         f"Eval complete: total={summary['total']} passed={summary['passed']} failed={summary['failed']} output={output}"
     )
-    if summary["failed"] > 0:
+    if summary["pass_rate"] < min_pass_rate:
         raise typer.Exit(code=21)
 
 
