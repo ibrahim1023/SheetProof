@@ -10,6 +10,7 @@ from sheetproof.graph.builder import build_dependency_graph
 from sheetproof.graph.export import write_dependency_graph
 from sheetproof.graph.impact import compute_downstream_impact
 from sheetproof.gate import GateFailure, build_gate_result, write_gate_result
+from sheetproof.evals import run_explanation_eval
 from sheetproof.llm.local_explainer import explain_cell
 from sheetproof.reports.csv_export import write_assumption_register_csv, write_risk_cells_csv
 from sheetproof.reports.json_report import write_json_report
@@ -281,6 +282,22 @@ def gate(
         for f in result.failures:
             typer.echo(f"- {f.rule}: actual={f.actual} threshold={f.threshold} ({f.reason})")
         raise typer.Exit(code=result.exit_code)
+
+
+@app.command("eval-explain")
+def eval_explain(
+    dataset: Path = typer.Option(Path("evals/datasets/explain_schema_cases.json"), "--dataset"),
+    output: Path = typer.Option(Path("evals/results/explain_eval_results.json"), "--output"),
+) -> None:
+    """Run explanation schema evals."""
+    if not dataset.exists():
+        raise typer.BadParameter(f"Dataset not found: {dataset}")
+    summary = run_explanation_eval(dataset, output)
+    typer.echo(
+        f"Eval complete: total={summary['total']} passed={summary['passed']} failed={summary['failed']} output={output}"
+    )
+    if summary["failed"] > 0:
+        raise typer.Exit(code=21)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+{
+  "name": "explain_schema_contract",
+  "must_pass": [
+    "output is valid StructuredExplanation JSON",
+    "summary length >= 5",
+    "risks is list",
+    "reviewer_actions is list",
+    "citations items contain cell and reason"
+  ]
+}

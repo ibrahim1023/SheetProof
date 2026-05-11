@@ -1,0 +1,12 @@
+{
+  "cases": [
+    {
+      "id": "valid_001",
+      "output_json": "{\"summary\":\"Cell computes growth impact\",\"risks\":[\"Volatile dependency\"],\"reviewer_actions\":[\"Validate input assumptions\"],\"citations\":[{\"cell\":\"Inputs!B1\",\"reason\":\"Primary driver\"}]}"
+    },
+    {
+      "id": "invalid_001",
+      "output_json": "{\"summary\":\"short\",\"risks\":\"not_a_list\"}"
+    }
+  ]
+}
