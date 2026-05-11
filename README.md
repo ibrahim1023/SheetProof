@@ -47,7 +47,7 @@ sheetproof eval-explain --dataset evals/datasets/explain_schema_cases.json --out
 
 `explain` requirements:
 - run `audit` first for the same workbook (uses `.sheetproof` deterministic artifacts)
-- enable local LLM in config (`sheetproof.yml`):
+- enable LLM provider in config (`sheetproof.yml`):
 
 ```yaml
 llm:
@@ -56,6 +56,12 @@ llm:
   model: "qwen"
   base_url: "http://localhost:11434"
 ```
+
+Supported providers:
+- `local` / `ollama` (local runtime)
+- `openai`
+- `anthropic`
+- `gemini`
 
 ## Output Artifacts (target MVP)
 

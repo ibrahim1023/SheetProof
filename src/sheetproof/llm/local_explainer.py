@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 from sheetproof.config.loader import load_config
 from sheetproof.llm.orchestrator import ExplainRunConfig, run_explain_flow
 from sheetproof.llm.prompts import build_cell_explanation_prompt
+from sheetproof.llm.providers import call_anthropic, call_gemini, call_openai
 from sheetproof.llm.schemas import StructuredExplanation
 from sheetproof.reproducibility import write_stable_json
 
@@ -176,8 +177,10 @@ def explain_cell(workbook: Path, cell: str) -> str:
         raise ValueError("LLM explanations are disabled in config (`llm.enabled: false`).")
 
     provider = llm_cfg.get("provider", "local")
-    if provider not in {"local", "ollama"}:
-        raise ValueError(f"This build supports only local Ollama provider. Got: {provider}")
+    if provider not in {"local", "ollama", "openai", "anthropic", "gemini"}:
+        raise ValueError(
+            "Unsupported provider. Expected one of: local, ollama, openai, anthropic, gemini."
+        )
 
     model = llm_cfg.get("model", "qwen")
     base_url = llm_cfg.get("base_url", "http://localhost:11434")
@@ -185,10 +188,34 @@ def explain_cell(workbook: Path, cell: str) -> str:
     artifacts = load_deterministic_artifacts(workbook)
     context = _cell_context(cell, artifacts)
 
+    def _provider_call(prompt: str) -> str:
+        if provider in {"local", "ollama"}:
+            return explain_with_ollama(prompt=prompt, model=model, base_url=base_url)
+        if provider == "openai":
+            return call_openai(
+                prompt=prompt,
+                model=model,
+                base_url=llm_cfg.get("openai_base_url"),
+                api_key=llm_cfg.get("openai_api_key"),
+            )
+        if provider == "anthropic":
+            return call_anthropic(
+                prompt=prompt,
+                model=model,
+                api_key=llm_cfg.get("anthropic_api_key"),
+            )
+        if provider == "gemini":
+            return call_gemini(
+                prompt=prompt,
+                model=model,
+                api_key=llm_cfg.get("gemini_api_key"),
+            )
+        raise RuntimeError(f"Unsupported provider: {provider}")
+
     explanation = run_explain_flow(
         ExplainRunConfig(workbook_name=workbook.name, cell=cell, model=model),
         build_prompt=lambda: build_cell_explanation_prompt(cell, context.to_prompt_payload()),
-        provider_call=lambda prompt: explain_with_ollama(prompt=prompt, model=model, base_url=base_url),
+        provider_call=_provider_call,
     )
     write_explanation_artifact(workbook, cell, explanation)
     lines = [f"Summary: {explanation.summary}"]
