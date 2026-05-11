@@ -42,6 +42,7 @@ sheetproof diff old.xlsx new.xlsx --policy-pack compliance
 sheetproof gate --workbook workbook.xlsx --max-high-risk-findings 5 --max-external-references 0
 sheetproof gate --old-workbook old.xlsx --new-workbook new.xlsx --max-new-hidden-sheets 0
 sheetproof explain workbook.xlsx --cell "Summary!F12"
+sheetproof eval-explain --dataset evals/datasets/explain_schema_cases.json --output evals/results/explain_eval_results.json
 ```
 
 `explain` requirements:
@@ -68,6 +69,9 @@ llm:
 - `workbook-diff.json`
 - `assumption-diff.json`
 - `reproducibility-manifest.json`
+- `traces.jsonl`
+- `explanations.json`
+- `gate-result.json`
 
 ## Policy Packs
 
