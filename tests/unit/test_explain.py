@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -54,12 +55,19 @@ def test_explain_uses_ollama_and_does_not_mutate_findings(tmp_path: Path, monkey
     )
     monkeypatch.setattr(
         "sheetproof.llm.local_explainer.explain_with_ollama",
-        lambda prompt, model, base_url="http://localhost:11434": "Cell C1 doubles the growth value.",
+        lambda prompt, model, base_url="http://localhost:11434": json.dumps(
+            {
+                "summary": "Cell C1 doubles the growth value.",
+                "risks": ["Input drift"],
+                "reviewer_actions": ["Verify Summary!B1"],
+                "citations": [{"cell": "Summary!B1", "reason": "Direct reference"}],
+            }
+        ),
     )
 
     explain_result = runner.invoke(app, ["explain", str(workbook_path), "--cell", "Summary!C1"])
     assert explain_result.exit_code == 0
-    assert "doubles the growth value" in explain_result.stdout
+    assert "Summary:" in explain_result.stdout
 
     after_report = report_path.read_text(encoding="utf-8")
     assert after_report == original_report

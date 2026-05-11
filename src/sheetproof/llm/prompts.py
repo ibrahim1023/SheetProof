@@ -12,6 +12,8 @@ def build_cell_explanation_prompt(cell: str, deterministic_context: dict[str, An
     lines = [
         "You are an explanation assistant for spreadsheet audit outputs.",
         "Use only the provided deterministic evidence. Do not invent cells, formulas, or risks.",
+        "Return STRICT JSON only with keys: summary, risks, reviewer_actions, citations.",
+        "citations must be objects with keys: cell, reason.",
         f"Workbook: {workbook}",
         f"Target cell: {cell}",
         f"Formula: {formula if formula else 'N/A'}",

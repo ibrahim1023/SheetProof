@@ -8,7 +8,9 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from sheetproof.config.loader import load_config
+from sheetproof.llm.orchestrator import ExplainRunConfig, run_explain_flow
 from sheetproof.llm.prompts import build_cell_explanation_prompt
+from sheetproof.llm.schemas import StructuredExplanation
 from sheetproof.reproducibility import write_stable_json
 
 
@@ -140,7 +142,12 @@ def explain_with_ollama(prompt: str, model: str, base_url: str = "http://localho
     return str(content).strip()
 
 
-def write_explanation_artifact(workbook: Path, cell: str, explanation: str, out_dir: Path = Path(".sheetproof")) -> Path:
+def write_explanation_artifact(
+    workbook: Path,
+    cell: str,
+    explanation: StructuredExplanation,
+    out_dir: Path = Path(".sheetproof"),
+) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "explanations.json"
 
@@ -155,7 +162,7 @@ def write_explanation_artifact(workbook: Path, cell: str, explanation: str, out_
             "workbook": workbook.name,
             "cell": cell,
             "source": "llm_explanation",
-            "explanation": explanation,
+            "explanation": explanation.model_dump(),
         }
     )
     write_stable_json(out_file, payload)
@@ -177,9 +184,21 @@ def explain_cell(workbook: Path, cell: str) -> str:
 
     artifacts = load_deterministic_artifacts(workbook)
     context = _cell_context(cell, artifacts)
-    prompt = build_cell_explanation_prompt(cell, context.to_prompt_payload())
-    explanation = explain_with_ollama(prompt=prompt, model=model, base_url=base_url)
-    if not explanation.strip():
-        raise RuntimeError("Malformed LLM explanation output.")
+
+    explanation = run_explain_flow(
+        ExplainRunConfig(workbook_name=workbook.name, cell=cell, model=model),
+        build_prompt=lambda: build_cell_explanation_prompt(cell, context.to_prompt_payload()),
+        provider_call=lambda prompt: explain_with_ollama(prompt=prompt, model=model, base_url=base_url),
+    )
     write_explanation_artifact(workbook, cell, explanation)
-    return explanation
+    lines = [f"Summary: {explanation.summary}"]
+    if explanation.risks:
+        lines.append("Risks:")
+        lines.extend([f"- {r}" for r in explanation.risks])
+    if explanation.reviewer_actions:
+        lines.append("Reviewer Actions:")
+        lines.extend([f"- {a}" for a in explanation.reviewer_actions])
+    if explanation.citations:
+        lines.append("Citations:")
+        lines.extend([f"- {c.cell}: {c.reason}" for c in explanation.citations])
+    return "\n".join(lines)
