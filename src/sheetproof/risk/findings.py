@@ -20,6 +20,7 @@ class Finding:
     dependency_path: list[str] = field(default_factory=list)
     impacted_outputs: list[str] = field(default_factory=list)
     path_depth: int = 0
+    source: str = "deterministic"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -9,14 +9,33 @@ from urllib.request import Request, urlopen
 
 from sheetproof.config.loader import load_config
 from sheetproof.llm.prompts import build_cell_explanation_prompt
+from sheetproof.reproducibility import write_stable_json
 
 
-@dataclass
+@dataclass(frozen=True)
 class DeterministicArtifacts:
     workbook_name: str
-    formula_map: list[dict[str, Any]]
+    formula_map: tuple[dict[str, Any], ...]
     dependency_graph: dict[str, Any]
     report_json: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class DeterministicExplainContext:
+    workbook: str
+    cell: str
+    formula: str | None
+    findings: tuple[dict[str, Any], ...]
+    dependencies: tuple[str, ...]
+
+    def to_prompt_payload(self) -> dict[str, Any]:
+        return {
+            "workbook": self.workbook,
+            "cell": self.cell,
+            "formula": self.formula,
+            "findings": list(self.findings),
+            "dependencies": list(self.dependencies),
+        }
 
 
 def load_deterministic_artifacts(workbook: Path, artifacts_dir: Path = Path(".sheetproof")) -> DeterministicArtifacts:
@@ -24,11 +43,7 @@ def load_deterministic_artifacts(workbook: Path, artifacts_dir: Path = Path(".sh
     formula_map_path = artifacts_dir / "formula-map.json"
     graph_path = artifacts_dir / "dependency-graph.json"
 
-    missing = [
-        str(p)
-        for p in [report_path, formula_map_path, graph_path]
-        if not p.exists()
-    ]
+    missing = [str(p) for p in [report_path, formula_map_path, graph_path] if not p.exists()]
     if missing:
         raise ValueError(
             "Missing deterministic artifacts required for explain: "
@@ -47,48 +62,52 @@ def load_deterministic_artifacts(workbook: Path, artifacts_dir: Path = Path(".sh
             "Re-run audit for the requested workbook."
         )
 
+    findings = report.get("findings", [])
+    for f in findings:
+        if f.get("source") != "deterministic":
+            raise ValueError(
+                "Explain is blocked: findings provenance is not deterministic. "
+                "Re-run audit to regenerate trusted artifacts."
+            )
+
     return DeterministicArtifacts(
         workbook_name=report_workbook or workbook.name,
-        formula_map=formula_map,
+        formula_map=tuple(formula_map),
         dependency_graph=graph,
         report_json=report,
     )
 
 
-def _cell_context(cell: str, artifacts: DeterministicArtifacts) -> dict[str, Any]:
+def _cell_context(cell: str, artifacts: DeterministicArtifacts) -> DeterministicExplainContext:
     sheet, _, cell_ref = cell.partition("!")
     if not sheet or not cell_ref:
         raise ValueError("Cell must be in `Sheet!A1` format.")
 
     formula_item = next(
-        (
-            x
-            for x in artifacts.formula_map
-            if x.get("sheet") == sheet and x.get("cell") == cell_ref
-        ),
+        (x for x in artifacts.formula_map if x.get("sheet") == sheet and x.get("cell") == cell_ref),
         None,
     )
 
-    findings = [
+    findings = tuple(
         f
         for f in artifacts.report_json.get("findings", [])
         if f.get("sheet") == sheet and f.get("cell") == cell_ref
-    ]
+    )
 
     node_name = f"{sheet}!{cell_ref}"
-    deps = [
+    deps = tuple(
         e.get("source")
         for e in artifacts.dependency_graph.get("edges", [])
         if e.get("target") == node_name
-    ]
+    )
 
-    return {
-        "workbook": artifacts.workbook_name,
-        "cell": cell,
-        "formula": formula_item.get("formula") if formula_item else None,
-        "findings": findings,
-        "dependencies": deps,
-    }
+    return DeterministicExplainContext(
+        workbook=artifacts.workbook_name,
+        cell=cell,
+        formula=formula_item.get("formula") if formula_item else None,
+        findings=findings,
+        dependencies=deps,
+    )
 
 
 def explain_with_ollama(prompt: str, model: str, base_url: str = "http://localhost:11434") -> str:
@@ -121,6 +140,28 @@ def explain_with_ollama(prompt: str, model: str, base_url: str = "http://localho
     return str(content).strip()
 
 
+def write_explanation_artifact(workbook: Path, cell: str, explanation: str, out_dir: Path = Path(".sheetproof")) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / "explanations.json"
+
+    payload: dict[str, Any]
+    if out_file.exists():
+        payload = json.loads(out_file.read_text(encoding="utf-8"))
+    else:
+        payload = {"explanations": []}
+
+    payload.setdefault("explanations", []).append(
+        {
+            "workbook": workbook.name,
+            "cell": cell,
+            "source": "llm_explanation",
+            "explanation": explanation,
+        }
+    )
+    write_stable_json(out_file, payload)
+    return out_file
+
+
 def explain_cell(workbook: Path, cell: str) -> str:
     cfg = load_config()
     llm_cfg = cfg.get("llm", {})
@@ -136,5 +177,9 @@ def explain_cell(workbook: Path, cell: str) -> str:
 
     artifacts = load_deterministic_artifacts(workbook)
     context = _cell_context(cell, artifacts)
-    prompt = build_cell_explanation_prompt(cell, context)
-    return explain_with_ollama(prompt=prompt, model=model, base_url=base_url)
+    prompt = build_cell_explanation_prompt(cell, context.to_prompt_payload())
+    explanation = explain_with_ollama(prompt=prompt, model=model, base_url=base_url)
+    if not explanation.strip():
+        raise RuntimeError("Malformed LLM explanation output.")
+    write_explanation_artifact(workbook, cell, explanation)
+    return explanation

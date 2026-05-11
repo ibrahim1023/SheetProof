@@ -12,6 +12,7 @@ Target report artifacts:
 - `assumption-diff.json` (diff mode)
 - `gate-result.json` (gate mode)
 - `reproducibility-manifest.json`
+- `explanations.json` (explain mode, LLM output only)
 
 Each finding must include workbook, sheet, cell, issue type, and deterministic evidence.
 
@@ -30,6 +31,7 @@ Each finding must include workbook, sheet, cell, issue type, and deterministic e
 - `dependency_path`
 - `impacted_outputs`
 - `path_depth`
+- `source` (`deterministic`)
 
 ## Markdown Report Required Sections
 
