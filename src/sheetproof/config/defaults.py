@@ -2,6 +2,7 @@ from __future__ import annotations
 
 DEFAULT_CONFIG = {
     "schema_version": 1,
+    "local_only": False,
     "risk": {
         "high_risk_sheets": ["Summary", "Dashboard", "Inputs"],
         "severity_overrides": {

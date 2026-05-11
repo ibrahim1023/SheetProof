@@ -173,6 +173,7 @@ def write_explanation_artifact(
 def explain_cell(workbook: Path, cell: str) -> str:
     cfg = load_config()
     llm_cfg = cfg.get("llm", {})
+    local_only = cfg.get("local_only", False)
     if llm_cfg.get("enabled") is False:
         raise ValueError("LLM explanations are disabled in config (`llm.enabled: false`).")
 
@@ -181,9 +182,13 @@ def explain_cell(workbook: Path, cell: str) -> str:
         raise ValueError(
             "Unsupported provider. Expected one of: local, ollama, openai, anthropic, gemini."
         )
+    if local_only and provider not in {"local", "ollama"}:
+        raise ValueError("Hosted provider usage is disabled by config (`local_only: true`).")
 
     model = llm_cfg.get("model", "qwen")
     base_url = llm_cfg.get("base_url", "http://localhost:11434")
+    timeout_seconds = int(llm_cfg.get("timeout_seconds", 40))
+    max_retries = int(llm_cfg.get("max_retries", 2))
 
     artifacts = load_deterministic_artifacts(workbook)
     context = _cell_context(cell, artifacts)
@@ -197,18 +202,24 @@ def explain_cell(workbook: Path, cell: str) -> str:
                 model=model,
                 base_url=llm_cfg.get("openai_base_url"),
                 api_key=llm_cfg.get("openai_api_key"),
+                timeout=timeout_seconds,
+                max_retries=max_retries,
             )
         if provider == "anthropic":
             return call_anthropic(
                 prompt=prompt,
                 model=model,
                 api_key=llm_cfg.get("anthropic_api_key"),
+                timeout=timeout_seconds,
+                max_retries=max_retries,
             )
         if provider == "gemini":
             return call_gemini(
                 prompt=prompt,
                 model=model,
                 api_key=llm_cfg.get("gemini_api_key"),
+                timeout=timeout_seconds,
+                max_retries=max_retries,
             )
         raise RuntimeError(f"Unsupported provider: {provider}")
 

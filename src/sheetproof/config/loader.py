@@ -26,6 +26,9 @@ def _validate_config(config: dict[str, Any]) -> None:
     if schema_version != 1:
         raise ValueError(f"Invalid config schema_version: {schema_version}. Expected 1.")
 
+    if not isinstance(config.get("local_only", False), bool):
+        raise ValueError("local_only must be a boolean")
+
     risk = config.get("risk", {})
     if not isinstance(risk.get("high_risk_sheets", []), list):
         raise ValueError("risk.high_risk_sheets must be a list")
@@ -42,6 +45,17 @@ def _validate_config(config: dict[str, Any]) -> None:
     for k, v in sev.items():
         if v not in ALLOWED_SEVERITIES:
             raise ValueError(f"Invalid severity `{v}` for `{k}`")
+
+    llm = config.get("llm", {})
+    if llm and not isinstance(llm, dict):
+        raise ValueError("llm must be a mapping when provided")
+    if isinstance(llm, dict):
+        timeout_s = llm.get("timeout_seconds", 40)
+        retries = llm.get("max_retries", 2)
+        if not isinstance(timeout_s, int) or timeout_s <= 0:
+            raise ValueError("llm.timeout_seconds must be a positive integer")
+        if not isinstance(retries, int) or retries < 0:
+            raise ValueError("llm.max_retries must be a non-negative integer")
 
 
 def load_config(config_path: Path | None = None, policy_pack: str | None = None) -> dict[str, Any]:
