@@ -110,3 +110,9 @@ def test_gate_passes_when_thresholds_allow(tmp_path: Path, monkeypatch) -> None:
     payload = json.loads(Path(".sheetproof/gate-result.json").read_text(encoding="utf-8"))
     assert payload["passed"] is True
     assert payload["exit_code"] == 0
+
+    traces = Path(".sheetproof/traces.jsonl").read_text(encoding="utf-8").splitlines()
+    assert any('"event": "gate_start"' in line for line in traces)
+    assert any('"event": "gate_complete"' in line for line in traces)
+    assert any('"request_id":' in line for line in traces)
+    assert any('"latency_ms":' in line for line in traces)

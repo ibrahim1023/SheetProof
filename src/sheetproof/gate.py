@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from sheetproof.orchestration.graph import GraphState, run_state_graph
 from sheetproof.reproducibility import write_stable_json
 
 
@@ -57,3 +58,24 @@ def build_gate_result(mode: str, failures: list[GateFailure]) -> GateResult:
         code = 11
 
     return GateResult(mode=mode, passed=False, exit_code=code, failures=failures)
+
+
+def run_gate_flow(mode: str, failures: list[GateFailure], out_dir: Path) -> tuple[GateResult, Path]:
+    result: GateResult | None = None
+    out_path: Path | None = None
+
+    def _node_runner(state: GraphState) -> str | None:
+        nonlocal result, out_path
+        if state.node == "build_result":
+            result = build_gate_result(mode=mode, failures=failures)
+            return "write_result"
+        if state.node == "write_result":
+            assert result is not None
+            out_path = write_gate_result(result, out_dir)
+            return None
+        raise RuntimeError(f"Unknown gate node `{state.node}`")
+
+    run_state_graph(start_node="build_result", max_steps=4, run_node=_node_runner)
+    assert result is not None
+    assert out_path is not None
+    return result, out_path

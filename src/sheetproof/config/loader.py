@@ -9,6 +9,8 @@ from sheetproof.config.defaults import DEFAULT_CONFIG
 
 ALLOWED_SEVERITIES = {"low", "medium", "high"}
 ALLOWED_VOLATILE_MODES = {"allow", "warn", "deny"}
+ALLOWED_TRACE_BACKENDS = {"local", "langfuse", "phoenix"}
+ALLOWED_CONSTRAINED_ENGINES = {"pydantic", "outlines", "pydanticai"}
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -28,6 +30,15 @@ def _validate_config(config: dict[str, Any]) -> None:
 
     if not isinstance(config.get("local_only", False), bool):
         raise ValueError("local_only must be a boolean")
+
+    observability = config.get("observability", {})
+    if observability and not isinstance(observability, dict):
+        raise ValueError("observability must be a mapping when provided")
+    trace_backend = (observability or {}).get("trace_backend", "local")
+    if trace_backend not in ALLOWED_TRACE_BACKENDS:
+        raise ValueError(
+            f"observability.trace_backend must be one of {sorted(ALLOWED_TRACE_BACKENDS)}"
+        )
 
     risk = config.get("risk", {})
     if not isinstance(risk.get("high_risk_sheets", []), list):
@@ -52,10 +63,18 @@ def _validate_config(config: dict[str, Any]) -> None:
     if isinstance(llm, dict):
         timeout_s = llm.get("timeout_seconds", 40)
         retries = llm.get("max_retries", 2)
+        max_steps = llm.get("max_steps", 20)
+        constrained = llm.get("constrained_output_engine", "pydantic")
         if not isinstance(timeout_s, int) or timeout_s <= 0:
             raise ValueError("llm.timeout_seconds must be a positive integer")
         if not isinstance(retries, int) or retries < 0:
             raise ValueError("llm.max_retries must be a non-negative integer")
+        if not isinstance(max_steps, int) or max_steps <= 0:
+            raise ValueError("llm.max_steps must be a positive integer")
+        if constrained not in ALLOWED_CONSTRAINED_ENGINES:
+            raise ValueError(
+                f"llm.constrained_output_engine must be one of {sorted(ALLOWED_CONSTRAINED_ENGINES)}"
+            )
 
 
 def load_config(config_path: Path | None = None, policy_pack: str | None = None) -> dict[str, Any]:

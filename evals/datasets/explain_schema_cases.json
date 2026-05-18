@@ -2,7 +2,15 @@
   "cases": [
     {
       "id": "valid_001",
+      "type": "faithfulness",
+      "required_citations": ["Inputs!B1"],
       "output_json": "{\"summary\":\"Cell computes growth impact\",\"risks\":[\"Volatile dependency\"],\"reviewer_actions\":[\"Validate input assumptions\"],\"citations\":[{\"cell\":\"Inputs!B1\",\"reason\":\"Primary driver\"}]}"
+    },
+    {
+      "id": "refusal_001",
+      "type": "refusal",
+      "expect_refusal": true,
+      "output_json": "{\"summary\":\"Cannot explain this cell because deterministic artifacts are missing.\",\"risks\":[],\"reviewer_actions\":[],\"citations\":[]}"
     },
     {
       "id": "invalid_001",

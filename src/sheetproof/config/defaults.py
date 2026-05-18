@@ -3,6 +3,19 @@ from __future__ import annotations
 DEFAULT_CONFIG = {
     "schema_version": 1,
     "local_only": False,
+    "observability": {
+        "trace_backend": "local",
+    },
+    "llm": {
+        "enabled": False,
+        "provider": "local",
+        "model": "qwen",
+        "prompt_version": "v1",
+        "timeout_seconds": 40,
+        "max_retries": 2,
+        "max_steps": 20,
+        "constrained_output_engine": "pydantic",
+    },
     "risk": {
         "high_risk_sheets": ["Summary", "Dashboard", "Inputs"],
         "severity_overrides": {

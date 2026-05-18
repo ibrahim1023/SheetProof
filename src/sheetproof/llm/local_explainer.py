@@ -173,6 +173,7 @@ def write_explanation_artifact(
 def explain_cell(workbook: Path, cell: str) -> str:
     cfg = load_config()
     llm_cfg = cfg.get("llm", {})
+    observability_cfg = cfg.get("observability", {})
     local_only = cfg.get("local_only", False)
     if llm_cfg.get("enabled") is False:
         raise ValueError("LLM explanations are disabled in config (`llm.enabled: false`).")
@@ -189,6 +190,8 @@ def explain_cell(workbook: Path, cell: str) -> str:
     base_url = llm_cfg.get("base_url", "http://localhost:11434")
     timeout_seconds = int(llm_cfg.get("timeout_seconds", 40))
     max_retries = int(llm_cfg.get("max_retries", 2))
+    prompt_version = str(llm_cfg.get("prompt_version", "v1"))
+    max_steps = int(llm_cfg.get("max_steps", 20))
 
     artifacts = load_deterministic_artifacts(workbook)
     context = _cell_context(cell, artifacts)
@@ -224,7 +227,16 @@ def explain_cell(workbook: Path, cell: str) -> str:
         raise RuntimeError(f"Unsupported provider: {provider}")
 
     explanation = run_explain_flow(
-        ExplainRunConfig(workbook_name=workbook.name, cell=cell, model=model),
+        ExplainRunConfig(
+            workbook_name=workbook.name,
+            cell=cell,
+            model=model,
+            provider=provider,
+            prompt_version=prompt_version,
+            max_retries=max_retries,
+            max_steps=max_steps,
+            trace_backend=str(observability_cfg.get("trace_backend", "local")),
+        ),
         build_prompt=lambda: build_cell_explanation_prompt(cell, context.to_prompt_payload()),
         provider_call=_provider_call,
     )

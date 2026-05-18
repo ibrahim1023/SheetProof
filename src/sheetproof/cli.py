@@ -1,4 +1,6 @@
 from pathlib import Path
+import time
+import uuid
 
 import typer
 
@@ -9,9 +11,10 @@ from sheetproof.formulas.extractor import extract_formula_inventory, write_formu
 from sheetproof.graph.builder import build_dependency_graph
 from sheetproof.graph.export import write_dependency_graph
 from sheetproof.graph.impact import compute_downstream_impact
-from sheetproof.gate import GateFailure, build_gate_result, write_gate_result
+from sheetproof.gate import GateFailure, run_gate_flow
 from sheetproof.evals import run_explanation_eval
 from sheetproof.llm.local_explainer import explain_cell
+from sheetproof.observability import write_trace
 from sheetproof.reports.csv_export import write_assumption_register_csv, write_risk_cells_csv
 from sheetproof.reports.json_report import write_json_report
 from sheetproof.reports.markdown import write_markdown_report
@@ -149,6 +152,8 @@ def gate(
     fail_on_warning: bool = typer.Option(False, "--fail-on-warning"),
 ) -> None:
     """Run deterministic approval gates for audit or diff mode."""
+    start = time.perf_counter()
+    request_id = str(uuid.uuid4())
     failures: list[GateFailure] = []
     out_dir = Path(".sheetproof")
 
@@ -160,6 +165,16 @@ def gate(
         raise typer.BadParameter("Provide --workbook or both --old-workbook and --new-workbook.")
 
     mode = "audit"
+    write_trace(
+        {
+            "event": "gate_start",
+            "request_id": request_id,
+            "mode": mode if is_audit_mode else "diff",
+            "provider": "deterministic",
+            "model": "n/a",
+            "prompt_version": "n/a",
+        }
+    )
     if is_audit_mode:
         if not workbook or not workbook.exists():
             raise typer.BadParameter(f"Workbook not found: {workbook}")
@@ -274,8 +289,19 @@ def gate(
                 )
             )
 
-    result = build_gate_result(mode=mode, failures=failures)
-    out_path = write_gate_result(result, out_dir)
+    result, out_path = run_gate_flow(mode=mode, failures=failures, out_dir=out_dir)
+    write_trace(
+        {
+            "event": "gate_complete" if result.passed else "gate_failed",
+            "request_id": request_id,
+            "mode": mode,
+            "provider": "deterministic",
+            "model": "n/a",
+            "prompt_version": "n/a",
+            "latency_ms": int((time.perf_counter() - start) * 1000),
+            "error": None if result.passed else "; ".join(f.reason for f in result.failures),
+        }
+    )
     typer.echo(f"Gate result written: {out_path}")
     typer.echo(f"Gate passed: {result.passed}")
     if not result.passed:

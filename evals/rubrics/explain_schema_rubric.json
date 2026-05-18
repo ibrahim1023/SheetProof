@@ -5,6 +5,8 @@
     "summary length >= 5",
     "risks is list",
     "reviewer_actions is list",
-    "citations items contain cell and reason"
+    "citations items contain cell and reason",
+    "faithfulness cases include required citations",
+    "refusal cases contain refusal-style summary language"
   ]
 }

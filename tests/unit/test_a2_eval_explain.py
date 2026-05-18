@@ -18,9 +18,24 @@ def test_eval_command_produces_results_and_nonzero_on_fail(tmp_path: Path, monke
                 "cases": [
                     {
                         "id": "ok",
+                        "type": "faithfulness",
+                        "required_citations": ["Summary!B1"],
                         "output_json": json.dumps(
                             {
                                 "summary": "Valid summary text",
+                                "risks": [],
+                                "reviewer_actions": [],
+                                "citations": [{"cell": "Summary!B1", "reason": "driver"}],
+                            }
+                        ),
+                    },
+                    {
+                        "id": "refusal_ok",
+                        "type": "refusal",
+                        "expect_refusal": True,
+                        "output_json": json.dumps(
+                            {
+                                "summary": "Cannot provide explanation due to missing deterministic artifacts.",
                                 "risks": [],
                                 "reviewer_actions": [],
                                 "citations": [],

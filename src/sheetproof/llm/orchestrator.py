@@ -8,6 +8,7 @@ from typing import Callable
 
 from sheetproof.llm.schemas import StructuredExplanation
 from sheetproof.observability import write_trace
+from sheetproof.orchestration.graph import GraphState, run_state_graph
 
 
 @dataclass
@@ -15,7 +16,11 @@ class ExplainRunConfig:
     workbook_name: str
     cell: str
     model: str
+    provider: str = "unknown"
+    prompt_version: str = "v1"
+    trace_backend: str = "local"
     max_retries: int = 2
+    max_steps: int = 20
 
 
 def _normalize_provider_json(raw: str) -> str:
@@ -81,56 +86,99 @@ def run_explain_flow(
     build_prompt: Callable[[], str],
     provider_call: Callable[[str], str],
 ) -> StructuredExplanation:
-    # Explicit state transitions (LangGraph-ready control flow).
-    write_trace(
+    def _trace(event: dict) -> None:
+        write_trace(event, backend=cfg.trace_backend)
+
+    request_id = str(uuid.uuid4())
+    _trace(
         {
             "event": "explain_start",
-            "request_id": str(uuid.uuid4()),
+            "request_id": request_id,
             "workbook": cfg.workbook_name,
             "cell": cfg.cell,
+            "provider": cfg.provider,
             "model": cfg.model,
+            "prompt_version": cfg.prompt_version,
         }
     )
 
-    prompt = build_prompt()
+    prompt = ""
     start = time.perf_counter()
+    attempt = 0
     last_err: Exception | None = None
-    for attempt in range(cfg.max_retries + 1):
-        try:
-            write_trace(
-                {
-                    "event": "provider_call",
-                    "attempt": attempt,
-                    "provider": "ollama",
-                    "model": cfg.model,
-                    "prompt_chars": len(prompt),
-                }
-            )
-            raw = provider_call(prompt)
-            normalized = _normalize_provider_json(raw)
-            payload = json.loads(normalized)
-            parsed = StructuredExplanation.model_validate(_coerce_structured_payload(payload))
-            write_trace(
-                {
-                    "event": "explain_success",
-                    "attempt": attempt,
-                    "cell": cfg.cell,
-                    "latency_ms": int((time.perf_counter() - start) * 1000),
-                    "output_chars": len(raw),
-                }
-            )
-            return parsed
-        except Exception as exc:  # noqa: BLE001
-            last_err = exc
-            write_trace(
-                {
-                    "event": "explain_retry",
-                    "attempt": attempt,
-                    "error": str(exc),
-                    "latency_ms": int((time.perf_counter() - start) * 1000),
-                }
-            )
+    parsed: StructuredExplanation | None = None
 
+    def _node_runner(state: GraphState) -> str | None:
+        nonlocal prompt, attempt, last_err, parsed
+        if state.node == "build_prompt":
+            prompt = build_prompt()
+            return "provider_call"
+        if state.node == "provider_call":
+            try:
+                _trace(
+                    {
+                        "event": "provider_call",
+                        "request_id": request_id,
+                        "attempt": attempt,
+                        "provider": cfg.provider,
+                        "model": cfg.model,
+                        "prompt_version": cfg.prompt_version,
+                        "prompt_chars": len(prompt),
+                    }
+                )
+                raw = provider_call(prompt)
+                normalized = _normalize_provider_json(raw)
+                payload = json.loads(normalized)
+                parsed = StructuredExplanation.model_validate(_coerce_structured_payload(payload))
+                _trace(
+                    {
+                        "event": "explain_success",
+                        "request_id": request_id,
+                        "attempt": attempt,
+                        "provider": cfg.provider,
+                        "model": cfg.model,
+                        "cell": cfg.cell,
+                        "latency_ms": int((time.perf_counter() - start) * 1000),
+                        "output_chars": len(raw),
+                        "token_usage": None,
+                    }
+                )
+                return None
+            except Exception as exc:  # noqa: BLE001
+                last_err = exc
+                _trace(
+                    {
+                        "event": "explain_retry",
+                        "request_id": request_id,
+                        "attempt": attempt,
+                        "provider": cfg.provider,
+                        "model": cfg.model,
+                        "error": str(exc),
+                        "latency_ms": int((time.perf_counter() - start) * 1000),
+                    }
+                )
+                attempt += 1
+                if attempt > cfg.max_retries:
+                    return "failed"
+                return "provider_call"
+        if state.node == "failed":
+            assert last_err is not None
+            _trace(
+                {
+                    "event": "explain_failed",
+                    "request_id": request_id,
+                    "cell": cfg.cell,
+                    "provider": cfg.provider,
+                    "model": cfg.model,
+                    "error": str(last_err),
+                    "latency_ms": int((time.perf_counter() - start) * 1000),
+                }
+            )
+            return None
+        raise RuntimeError(f"Unknown explain node `{state.node}`")
+
+    run_state_graph(start_node="build_prompt", max_steps=cfg.max_steps, run_node=_node_runner)
+    if parsed is not None:
+        return parsed
     assert last_err is not None
-    write_trace({"event": "explain_failed", "cell": cfg.cell, "error": str(last_err)})
     raise RuntimeError(f"Explanation failed after retries: {last_err}")
