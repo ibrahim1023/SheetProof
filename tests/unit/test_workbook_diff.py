@@ -49,6 +49,9 @@ def test_compute_workbook_diff(tmp_path: Path) -> None:
     assert result.newly_hidden_sheets == ["HiddenCalc"]
     assert result.high_risk_changed_cells >= 1
     assert any(c.change_type == "formula_changed" for c in result.changes)
+    assert isinstance(result.reviewer_summary, list)
+    if result.reviewer_summary:
+        assert "evidence_pointer" in result.reviewer_summary[0]
 
 
 def test_cli_diff_writes_json(tmp_path: Path) -> None:

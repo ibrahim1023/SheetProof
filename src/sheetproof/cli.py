@@ -17,7 +17,8 @@ from sheetproof.graph.builder import build_dependency_graph
 from sheetproof.graph.export import write_dependency_graph
 from sheetproof.graph.impact import compute_downstream_impact
 from sheetproof.gate import GateFailure, run_gate_flow
-from sheetproof.evals import run_explanation_eval
+from sheetproof.integrations.export import export_ci_annotations, export_ticket_payload
+from sheetproof.evals import run_explanation_eval, write_reliability_metrics
 from sheetproof.llm.local_explainer import explain_cell
 from sheetproof.observability import write_trace
 from sheetproof.policy import effective_policy_context
@@ -25,6 +26,7 @@ from sheetproof.reports.approval_trail import write_approval_trail
 from sheetproof.reports.csv_export import write_assumption_register_csv, write_risk_cells_csv
 from sheetproof.reports.json_report import write_json_report
 from sheetproof.reports.markdown import write_markdown_report
+from sheetproof.reports.reviewer_queue import write_reviewer_queue
 from sheetproof.reports.repro_manifest import write_reproducibility_manifest
 from sheetproof.workbook.attestation import write_coverage_matrix
 from sheetproof.risk.rules import (
@@ -101,6 +103,7 @@ def audit(
     write_coverage_matrix(out_dir)
     risk_csv = write_risk_cells_csv(findings, out_dir)
     assumptions_csv = write_assumption_register_csv(assumptions, out_dir)
+    reviewer_queue = write_reviewer_queue(findings, out_dir)
     repro_manifest = write_reproducibility_manifest(out_dir)
 
     typer.echo(f"Workbook index written: {index_path}")
@@ -110,6 +113,7 @@ def audit(
     typer.echo(f"Report written: {json_report}")
     typer.echo(f"Risk cells CSV written: {risk_csv}")
     typer.echo(f"Assumption register CSV written: {assumptions_csv}")
+    typer.echo(f"Reviewer queue written: {reviewer_queue}")
     typer.echo(f"Reproducibility manifest written: {repro_manifest}")
 
 
@@ -413,6 +417,46 @@ def benchmark_audit(
         except (ValueError, RuntimeError) as exc:
             typer.echo(f"Benchmark regression gate failed: {exc}")
             raise typer.Exit(code=22) from exc
+
+
+@app.command("export-integrations")
+def export_integrations(
+    report: Path = typer.Option(Path(".sheetproof/sheetproof-report.json"), "--report"),
+    out_dir: Path = typer.Option(Path(".sheetproof/integrations"), "--out-dir"),
+) -> None:
+    """Export deterministic machine-readable payloads for external review workflows."""
+    if not report.exists():
+        raise typer.BadParameter(f"Report not found: {report}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ci_path = export_ci_annotations(report, out_dir / "ci-annotations.json")
+    ticket_path = export_ticket_payload(report, out_dir / "ticket-export.json")
+    typer.echo(f"Integration export written: {ci_path}")
+    typer.echo(f"Integration export written: {ticket_path}")
+
+
+@app.command("reliability-report")
+def reliability_report(
+    eval_results: Path = typer.Option(
+        Path("evals/results/explain_eval_results.json"),
+        "--eval-results",
+    ),
+    output: Path = typer.Option(
+        Path("evals/results/reliability_metrics.json"),
+        "--output",
+    ),
+    min_pass_rate: float = typer.Option(0.5, "--min-pass-rate"),
+    min_refusal_rate: float = typer.Option(0.5, "--min-refusal-rate"),
+) -> None:
+    """Generate release-level reliability metrics and enforce thresholds."""
+    if not eval_results.exists():
+        raise typer.BadParameter(f"Eval results not found: {eval_results}")
+    metrics = write_reliability_metrics(eval_results, output)
+    typer.echo(
+        f"Reliability metrics written: {output} pass_rate={metrics['pass_rate']:.3f} "
+        f"refusal_correctness_rate={metrics['refusal_correctness_rate']:.3f}"
+    )
+    if metrics["pass_rate"] < min_pass_rate or metrics["refusal_correctness_rate"] < min_refusal_rate:
+        raise typer.Exit(code=23)
 
 
 if __name__ == "__main__":

@@ -46,6 +46,7 @@ class WorkbookDiffResult:
     high_risk_changed_cells: int
     changes: list[CellChange]
     assumption_deltas: list[AssumptionDelta]
+    reviewer_summary: list[dict[str, str]]
 
     def to_dict(self) -> dict[str, Any]:
         out = asdict(self)
@@ -134,6 +135,16 @@ def compute_workbook_diff(
     new_assumptions = detect_assumptions(new_index, new_impact, new_graph)
     assumption_deltas = _compute_assumption_deltas(old_assumptions, new_assumptions)
 
+    reviewer_summary = [
+        {
+            "change": f"{c.sheet}!{c.cell} {c.change_type}",
+            "why_it_matters": ", ".join(c.reasons),
+            "evidence_pointer": f"changes[{i}]",
+        }
+        for i, c in enumerate(changes)
+        if c.high_risk
+    ][:20]
+
     return WorkbookDiffResult(
         old_workbook=old_index.workbook,
         new_workbook=new_index.workbook,
@@ -148,6 +159,7 @@ def compute_workbook_diff(
         high_risk_changed_cells=sum(1 for c in changes if c.high_risk),
         changes=changes,
         assumption_deltas=assumption_deltas,
+        reviewer_summary=reviewer_summary,
     )
 
 
@@ -175,5 +187,10 @@ def render_diff_summary(result: WorkbookDiffResult) -> str:
         f"Newly hidden sheets: {len(result.newly_hidden_sheets)}",
         f"New external references: {len(result.new_external_references)}",
         f"High-risk changed cells: {result.high_risk_changed_cells}",
+        f"Reviewer summary items: {len(result.reviewer_summary)}",
     ]
+    if result.reviewer_summary:
+        lines.append("What changed and why it matters:")
+        for item in result.reviewer_summary[:5]:
+            lines.append(f"- {item['change']} -> {item['why_it_matters']} ({item['evidence_pointer']})")
     return "\n".join(lines)

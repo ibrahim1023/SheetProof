@@ -40,10 +40,10 @@ It is designed so deterministic analysis remains authoritative, while LLM usage 
 
 | Metric | Current Value | Source |
 |---|---|---|
-| Test suite | `52 passed` | `pytest -q` |
+| Test suite | `56 passed` | `pytest -q` |
 | Lint | Pass | `ruff check src tests` |
 | Typecheck | Pass | `mypy src` |
-| Explain eval gate pass rate | `66.67%` (`2/3`) | `evals/results/explain_eval_results.json` |
+| Explain eval gate pass rate | `40.00%` (`2/5`) | `evals/results/explain_eval_results.json` |
 | Benchmark p95 (medium fixture) | `18.213 ms` (3 runs latest) | `evals/results/audit_benchmark_latest.json` |
 | Benchmark baselines | small/medium/large class baselines tracked | `evals/results/audit_benchmark_*_baseline.json` |
 
@@ -84,10 +84,12 @@ sheetproof gate --workbook workbook.xlsx --max-high-risk-findings 5 --max-extern
 sheetproof gate --old-workbook old.xlsx --new-workbook new.xlsx --max-new-hidden-sheets 0
 sheetproof explain workbook.xlsx --cell "Summary!F12"
 sheetproof eval-explain --dataset evals/datasets/explain_schema_cases.json --output evals/results/explain_eval_results.json
+sheetproof reliability-report --eval-results evals/results/explain_eval_results.json --output evals/results/reliability_metrics.json --min-pass-rate 0.4 --min-refusal-rate 0.5
 sheetproof benchmark-audit --workbook examples/benchmark_medium.xlsx --runs 5 --output evals/results/audit_benchmark_latest.json
 sheetproof benchmark-audit --workbook examples/benchmark_small.xlsx --runs 3 --baseline evals/results/audit_benchmark_small_baseline.json --max-regression-pct 100
 sheetproof benchmark-audit --workbook examples/benchmark_medium.xlsx --runs 3 --baseline evals/results/audit_benchmark_medium_baseline.json --max-regression-pct 120
 sheetproof benchmark-audit --workbook examples/benchmark_large.xlsx --runs 2 --baseline evals/results/audit_benchmark_large_baseline.json --max-regression-pct 150
+sheetproof export-integrations --report .sheetproof/sheetproof-report.json --out-dir .sheetproof/integrations
 ```
 
 ## Explain Configuration
@@ -142,10 +144,14 @@ npx promptfoo@latest eval -c evals/promptfooconfig.yaml
 - `.sheetproof/gate-result.json`
 - `.sheetproof/coverage-matrix.json`
 - `.sheetproof/approval-trail.json` (when gate approval inputs are provided)
+- `.sheetproof/reviewer-queue.json`
+- `.sheetproof/integrations/ci-annotations.json`
+- `.sheetproof/integrations/ticket-export.json`
 - `evals/results/audit_benchmark_small_baseline.json`
 - `evals/results/audit_benchmark_medium_baseline.json`
 - `evals/results/audit_benchmark_large_baseline.json`
 - `evals/results/audit_benchmark_latest.json` (local/runtime; gitignored)
+- `evals/results/reliability_metrics.json`
 
 ## Policy Packs
 

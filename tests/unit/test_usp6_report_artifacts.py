@@ -55,3 +55,7 @@ def test_json_and_csv_artifacts_are_parseable_and_consistent(tmp_path: Path, mon
     coverage = json.loads(Path(".sheetproof/coverage-matrix.json").read_text(encoding="utf-8"))
     assert coverage["version"] == 1
     assert "warning_taxonomy" in coverage
+    reviewer_queue = json.loads(Path(".sheetproof/reviewer-queue.json").read_text(encoding="utf-8"))
+    assert "items" in reviewer_queue
+    if reviewer_queue["items"]:
+        assert "evidence_pointer" in reviewer_queue["items"][0]

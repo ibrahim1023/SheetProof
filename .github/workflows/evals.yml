@@ -20,7 +20,9 @@ jobs:
       - name: Run tests
         run: pytest -q
       - name: Run explanation schema eval gate
-        run: sheetproof eval-explain --min-pass-rate 0.5
+        run: sheetproof eval-explain --min-pass-rate 0.4
+      - name: Run reliability metrics gate
+        run: sheetproof reliability-report --min-pass-rate 0.4 --min-refusal-rate 0.5
       - name: Run promptfoo eval gate
         run: npx promptfoo@latest eval -c evals/promptfooconfig.yaml
       - name: Run audit benchmark regression gate

@@ -59,3 +59,36 @@ def run_explanation_eval(dataset_path: Path, results_path: Path) -> dict:
     }
     write_stable_json(results_path, summary)
     return summary
+
+
+def write_reliability_metrics(eval_results_path: Path, output_path: Path) -> dict:
+    payload = json.loads(eval_results_path.read_text(encoding="utf-8"))
+    results = payload.get("results", [])
+    total = len(results)
+    passed = sum(1 for r in results if r.get("pass") is True)
+    failed = total - passed
+
+    refusal_total = 0
+    refusal_passed = 0
+    failure_taxonomy: dict[str, int] = {}
+    for r in results:
+        reason = str(r.get("reason", "unknown"))
+        if "refusal" in str(r.get("id", "")).lower():
+            refusal_total += 1
+            if r.get("pass") is True:
+                refusal_passed += 1
+        key = reason.split(":", 1)[0]
+        failure_taxonomy[key] = failure_taxonomy.get(key, 0) + (0 if r.get("pass") else 1)
+
+    metrics = {
+        "total_cases": total,
+        "passed_cases": passed,
+        "failed_cases": failed,
+        "pass_rate": (passed / total) if total else 0.0,
+        "refusal_total": refusal_total,
+        "refusal_passed": refusal_passed,
+        "refusal_correctness_rate": (refusal_passed / refusal_total) if refusal_total else 1.0,
+        "failure_taxonomy": dict(sorted(failure_taxonomy.items())),
+    }
+    write_stable_json(output_path, metrics)
+    return metrics

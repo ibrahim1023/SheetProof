@@ -15,6 +15,18 @@
     {
       "id": "invalid_001",
       "output_json": "{\"summary\":\"short\",\"risks\":\"not_a_list\"}"
+    },
+    {
+      "id": "faithfulness_missing_citation_001",
+      "type": "faithfulness",
+      "required_citations": ["Inputs!C9"],
+      "output_json": "{\"summary\":\"Model explains but omits required citation.\",\"risks\":[],\"reviewer_actions\":[],\"citations\":[{\"cell\":\"Inputs!B1\",\"reason\":\"Different cell\"}]}"
+    },
+    {
+      "id": "refusal_incorrect_001",
+      "type": "refusal",
+      "expect_refusal": true,
+      "output_json": "{\"summary\":\"Everything is fine and explanation is available.\",\"risks\":[],\"reviewer_actions\":[],\"citations\":[]}"
     }
   ]
 }
