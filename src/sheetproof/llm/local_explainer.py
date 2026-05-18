@@ -7,6 +7,7 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+import instructor
 from sheetproof.config.loader import load_config
 from sheetproof.llm.orchestrator import ExplainRunConfig, run_explain_flow
 from sheetproof.llm.prompts import build_cell_explanation_prompt
@@ -192,11 +193,40 @@ def explain_cell(workbook: Path, cell: str) -> str:
     max_retries = int(llm_cfg.get("max_retries", 2))
     prompt_version = str(llm_cfg.get("prompt_version", "v1"))
     max_steps = int(llm_cfg.get("max_steps", 20))
+    constrained_engine = str(llm_cfg.get("constrained_output_engine", "pydantic"))
 
     artifacts = load_deterministic_artifacts(workbook)
     context = _cell_context(cell, artifacts)
 
+    def _instructor_model_id() -> str:
+        if provider in {"local", "ollama"}:
+            return f"ollama/{model}"
+        if provider == "openai":
+            return f"openai/{model}"
+        if provider == "anthropic":
+            return f"anthropic/{model}"
+        if provider == "gemini":
+            return f"google/{model}"
+        raise RuntimeError(f"Unsupported provider: {provider}")
+
+    def _provider_call_instructor(prompt: str) -> str:
+        kwargs: dict[str, Any] = {}
+        if provider in {"local", "ollama"}:
+            kwargs["base_url"] = f"{base_url.rstrip('/')}/v1"
+            kwargs["mode"] = instructor.Mode.JSON
+        client = instructor.from_provider(_instructor_model_id(), **kwargs)
+        structured = client.create(
+            response_model=StructuredExplanation,
+            messages=[{"role": "user", "content": prompt}],
+            max_retries=max_retries,
+        )
+        if isinstance(structured, StructuredExplanation):
+            return structured.model_dump_json()
+        return StructuredExplanation.model_validate(structured).model_dump_json()
+
     def _provider_call(prompt: str) -> str:
+        if constrained_engine == "instructor":
+            return _provider_call_instructor(prompt)
         if provider in {"local", "ollama"}:
             return explain_with_ollama(prompt=prompt, model=model, base_url=base_url)
         if provider == "openai":

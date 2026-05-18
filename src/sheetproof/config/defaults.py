@@ -5,6 +5,7 @@ DEFAULT_CONFIG = {
     "local_only": False,
     "observability": {
         "trace_backend": "local",
+        "primary_backend": "phoenix",
     },
     "llm": {
         "enabled": False,

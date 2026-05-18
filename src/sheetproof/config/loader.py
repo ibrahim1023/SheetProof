@@ -9,8 +9,9 @@ from sheetproof.config.defaults import DEFAULT_CONFIG
 
 ALLOWED_SEVERITIES = {"low", "medium", "high"}
 ALLOWED_VOLATILE_MODES = {"allow", "warn", "deny"}
-ALLOWED_TRACE_BACKENDS = {"local", "langfuse", "phoenix"}
-ALLOWED_CONSTRAINED_ENGINES = {"pydantic", "outlines", "pydanticai"}
+ALLOWED_TRACE_BACKENDS = {"local", "langfuse", "phoenix", "otel"}
+ALLOWED_PRIMARY_BACKENDS = {"phoenix", "langfuse"}
+ALLOWED_CONSTRAINED_ENGINES = {"pydantic", "outlines", "pydanticai", "instructor"}
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -38,6 +39,11 @@ def _validate_config(config: dict[str, Any]) -> None:
     if trace_backend not in ALLOWED_TRACE_BACKENDS:
         raise ValueError(
             f"observability.trace_backend must be one of {sorted(ALLOWED_TRACE_BACKENDS)}"
+        )
+    primary_backend = (observability or {}).get("primary_backend", "phoenix")
+    if primary_backend not in ALLOWED_PRIMARY_BACKENDS:
+        raise ValueError(
+            f"observability.primary_backend must be one of {sorted(ALLOWED_PRIMARY_BACKENDS)}"
         )
 
     risk = config.get("risk", {})
