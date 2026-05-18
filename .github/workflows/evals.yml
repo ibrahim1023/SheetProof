@@ -26,7 +26,17 @@ jobs:
       - name: Run audit benchmark regression gate
         run: |
           sheetproof benchmark-audit \
+            --workbook examples/benchmark_small.xlsx \
+            --runs 3 \
+            --baseline evals/results/audit_benchmark_small_baseline.json \
+            --max-regression-pct 100
+          sheetproof benchmark-audit \
             --workbook examples/benchmark_medium.xlsx \
             --runs 3 \
-            --baseline evals/results/audit_benchmark_baseline.json \
+            --baseline evals/results/audit_benchmark_medium_baseline.json \
+            --max-regression-pct 120
+          sheetproof benchmark-audit \
+            --workbook examples/benchmark_large.xlsx \
+            --runs 2 \
+            --baseline evals/results/audit_benchmark_large_baseline.json \
             --max-regression-pct 150

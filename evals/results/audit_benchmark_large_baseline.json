@@ -1,0 +1,17 @@
+{
+  "deterministic": true,
+  "runs": 5,
+  "runtime_ms": {
+    "avg_ms": 267.036,
+    "max_ms": 288.512,
+    "min_ms": 198.077,
+    "p95_ms": 288.512
+  },
+  "workbook": "benchmark_large.xlsx",
+  "workbook_stats": {
+    "cell_count": 11399,
+    "finding_count": 2999,
+    "formula_count": 7199,
+    "sheet_count": 3
+  }
+}
