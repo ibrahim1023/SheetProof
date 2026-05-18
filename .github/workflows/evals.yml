@@ -21,6 +21,8 @@ jobs:
         run: pytest -q
       - name: Run explanation schema eval gate
         run: sheetproof eval-explain --min-pass-rate 0.5
+      - name: Run promptfoo eval gate
+        run: npx promptfoo@latest eval -c evals/promptfooconfig.yaml
       - name: Run audit benchmark regression gate
         run: |
           sheetproof benchmark-audit \

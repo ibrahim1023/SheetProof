@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: SheetProof explanation quality regression checks
+prompts:
+  - "Explain spreadsheet cell {{cell}} using deterministic evidence only."
+providers:
+  - file://evals/promptfoo/provider.py
+tests:
+  - vars:
+      scenario: faithful
+      cell: Summary!B3
+    assert:
+      - type: contains
+        value: "Deterministic explanation"
+      - type: contains
+        value: "Summary!B3"
+  - vars:
+      scenario: refusal
+      cell: Summary!Z99
+    assert:
+      - type: contains
+        value: "Cannot explain"
