@@ -56,3 +56,14 @@ def test_unknown_policy_pack_fails_closed(tmp_path: Path, monkeypatch) -> None:
 
     result = runner.invoke(app, ["audit", str(workbook_path), "--policy-pack", "unknown-pack"])
     assert result.exit_code != 0
+
+
+def test_policy_pack_metadata_present_and_non_empty() -> None:
+    cfg = load_config()
+    packs = cfg["policy_packs"]
+    for pack_name in ("finance", "compliance", "operations"):
+        metadata = packs[pack_name]["metadata"]
+        assert metadata["version"]
+        assert metadata["owner"]
+        assert metadata["rationale"]
+        assert metadata["updated_at"]

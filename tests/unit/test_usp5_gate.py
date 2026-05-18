@@ -139,3 +139,33 @@ def test_gate_fails_on_unattested_feature_threshold(tmp_path: Path, monkeypatch)
     assert result.exit_code != 0
     payload = json.loads(Path(".sheetproof/gate-result.json").read_text(encoding="utf-8"))
     assert any(f["rule"] == "max_unattested_features" for f in payload["failures"])
+
+
+def test_gate_writes_approval_trail_and_policy_context(tmp_path: Path, monkeypatch) -> None:
+    p = tmp_path / "audit-ok-approval.xlsx"
+    _make_audit_workbook(p)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "gate",
+            "--workbook",
+            str(p),
+            "--policy-pack",
+            "finance",
+            "--approved-by",
+            "qa-user",
+            "--approval-reason",
+            "manual_risk_acceptance",
+        ],
+    )
+    assert result.exit_code == 0
+    gate_payload = json.loads(Path(".sheetproof/gate-result.json").read_text(encoding="utf-8"))
+    assert gate_payload["policy_context"]["pack"] == "finance"
+    assert gate_payload["policy_context"]["digest"]
+    assert gate_payload["approval_trail_file"]
+    approval_path = Path(gate_payload["approval_trail_file"])
+    assert approval_path.exists()
+    approval_payload = json.loads(approval_path.read_text(encoding="utf-8"))
+    assert approval_payload["approved_by"] == "qa-user"

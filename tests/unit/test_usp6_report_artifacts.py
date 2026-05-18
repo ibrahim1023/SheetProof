@@ -52,3 +52,6 @@ def test_json_and_csv_artifacts_are_parseable_and_consistent(tmp_path: Path, mon
     assert len(risk_csv) >= 1
     assert len(assumptions_csv) >= 1
     assert risk_csv[0].startswith("Type,Severity,Sheet,Cell")
+    coverage = json.loads(Path(".sheetproof/coverage-matrix.json").read_text(encoding="utf-8"))
+    assert coverage["version"] == 1
+    assert "warning_taxonomy" in coverage

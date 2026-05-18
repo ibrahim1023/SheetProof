@@ -20,10 +20,13 @@ from sheetproof.gate import GateFailure, run_gate_flow
 from sheetproof.evals import run_explanation_eval
 from sheetproof.llm.local_explainer import explain_cell
 from sheetproof.observability import write_trace
+from sheetproof.policy import effective_policy_context
+from sheetproof.reports.approval_trail import write_approval_trail
 from sheetproof.reports.csv_export import write_assumption_register_csv, write_risk_cells_csv
 from sheetproof.reports.json_report import write_json_report
 from sheetproof.reports.markdown import write_markdown_report
 from sheetproof.reports.repro_manifest import write_reproducibility_manifest
+from sheetproof.workbook.attestation import write_coverage_matrix
 from sheetproof.risk.rules import (
     dedupe_findings,
     detect_broken_reference_findings,
@@ -61,6 +64,7 @@ def audit(
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
     risk_policy = cfg.get("risk", {})
+    policy_context = effective_policy_context(cfg, policy_pack=policy_pack)
     out_dir = Path(".sheetproof")
     index = parse_workbook(workbook, deterministic=deterministic)
     index_path = write_workbook_index(index, out_dir)
@@ -85,7 +89,16 @@ def audit(
     findings = enrich_findings_with_lineage(findings, graph, impact)
 
     md_report = write_markdown_report(index, findings, assumptions, out_dir)
-    json_report = write_json_report(index, formulas, findings, assumptions, out_dir, risk_policy)
+    json_report = write_json_report(
+        index,
+        formulas,
+        findings,
+        assumptions,
+        out_dir,
+        risk_policy,
+        policy_context=policy_context,
+    )
+    write_coverage_matrix(out_dir)
     risk_csv = write_risk_cells_csv(findings, out_dir)
     assumptions_csv = write_assumption_register_csv(assumptions, out_dir)
     repro_manifest = write_reproducibility_manifest(out_dir)
@@ -155,6 +168,8 @@ def gate(
     max_unattested_features: int = typer.Option(999999, "--max-unattested-features"),
     max_new_hidden_sheets: int = typer.Option(999999, "--max-new-hidden-sheets"),
     max_high_risk_changed_cells: int = typer.Option(999999, "--max-high-risk-changed-cells"),
+    approved_by: str | None = typer.Option(None, "--approved-by"),
+    approval_reason: str | None = typer.Option(None, "--approval-reason"),
     fail_on_warning: bool = typer.Option(False, "--fail-on-warning"),
 ) -> None:
     """Run deterministic approval gates for audit or diff mode."""
@@ -171,6 +186,19 @@ def gate(
         raise typer.BadParameter("Provide --workbook or both --old-workbook and --new-workbook.")
 
     mode = "audit"
+    cfg = load_config(policy_pack=policy_pack)
+    policy_context = effective_policy_context(cfg, policy_pack=policy_pack)
+    approval_trail_file: str | None = None
+    if approved_by and approval_reason:
+        approval_path = write_approval_trail(
+            out_dir,
+            request_id=request_id,
+            mode=mode if is_audit_mode else "diff",
+            approved_by=approved_by,
+            approval_reason=approval_reason,
+            policy_context=policy_context,
+        )
+        approval_trail_file = str(approval_path)
     write_trace(
         {
             "event": "gate_start",
@@ -184,7 +212,6 @@ def gate(
     if is_audit_mode:
         if not workbook or not workbook.exists():
             raise typer.BadParameter(f"Workbook not found: {workbook}")
-        cfg = load_config(policy_pack=policy_pack)
         risk_policy = cfg.get("risk", {})
 
         index = parse_workbook(workbook, deterministic=True)
@@ -250,10 +277,19 @@ def gate(
 
         # keep audit artifacts available for review even in gate mode
         write_workbook_index(index, out_dir)
+        write_coverage_matrix(out_dir)
         write_formula_map(formulas, out_dir)
         write_dependency_graph(graph, impact, out_dir)
         write_markdown_report(index, findings, assumptions, out_dir)
-        write_json_report(index, formulas, findings, assumptions, out_dir, risk_policy)
+        write_json_report(
+            index,
+            formulas,
+            findings,
+            assumptions,
+            out_dir,
+            risk_policy,
+            policy_context=policy_context,
+        )
         write_risk_cells_csv(findings, out_dir)
         write_assumption_register_csv(assumptions, out_dir)
         write_reproducibility_manifest(out_dir)
@@ -305,7 +341,13 @@ def gate(
                 )
             )
 
-    result, out_path = run_gate_flow(mode=mode, failures=failures, out_dir=out_dir)
+    result, out_path = run_gate_flow(
+        mode=mode,
+        failures=failures,
+        out_dir=out_dir,
+        policy_context=policy_context,
+        approval_trail_file=approval_trail_file,
+    )
     write_trace(
         {
             "event": "gate_complete" if result.passed else "gate_failed",

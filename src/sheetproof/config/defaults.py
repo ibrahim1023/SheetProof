@@ -31,6 +31,12 @@ DEFAULT_CONFIG = {
     },
     "policy_packs": {
         "finance": {
+            "metadata": {
+                "version": "1.0.0",
+                "owner": "risk-finance",
+                "rationale": "Conservative finance controls for model integrity.",
+                "updated_at": "2026-05-18",
+            },
             "risk": {
                 "high_risk_sheets": ["Summary", "Dashboard", "Inputs"],
                 "severity_overrides": {
@@ -45,6 +51,12 @@ DEFAULT_CONFIG = {
             }
         },
         "compliance": {
+            "metadata": {
+                "version": "1.0.0",
+                "owner": "risk-compliance",
+                "rationale": "Strict compliance posture with volatile-function denial.",
+                "updated_at": "2026-05-18",
+            },
             "risk": {
                 "high_risk_sheets": ["Controls", "Risk", "Summary"],
                 "severity_overrides": {
@@ -59,6 +71,12 @@ DEFAULT_CONFIG = {
             }
         },
         "operations": {
+            "metadata": {
+                "version": "1.0.0",
+                "owner": "risk-operations",
+                "rationale": "Operational monitoring posture with practical sensitivity.",
+                "updated_at": "2026-05-18",
+            },
             "risk": {
                 "high_risk_sheets": ["Dashboard", "KPIs", "Inputs"],
                 "severity_overrides": {

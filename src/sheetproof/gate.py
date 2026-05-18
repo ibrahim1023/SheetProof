@@ -27,6 +27,8 @@ class GateResult:
     passed: bool
     exit_code: int
     failures: list[GateFailure]
+    policy_context: dict[str, Any] | None = None
+    approval_trail_file: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +36,8 @@ class GateResult:
             "passed": self.passed,
             "exit_code": self.exit_code,
             "failures": [f.to_dict() for f in self.failures],
+            "policy_context": self.policy_context,
+            "approval_trail_file": self.approval_trail_file,
         }
 
 
@@ -49,9 +53,21 @@ def write_gate_result(result: GateResult, out_dir: Path) -> Path:
     return out_file
 
 
-def build_gate_result(mode: str, failures: list[GateFailure]) -> GateResult:
+def build_gate_result(
+    mode: str,
+    failures: list[GateFailure],
+    policy_context: dict[str, Any] | None = None,
+    approval_trail_file: str | None = None,
+) -> GateResult:
     if not failures:
-        return GateResult(mode=mode, passed=True, exit_code=0, failures=[])
+        return GateResult(
+            mode=mode,
+            passed=True,
+            exit_code=0,
+            failures=[],
+            policy_context=policy_context,
+            approval_trail_file=approval_trail_file,
+        )
 
     # Deterministic exit-class mapping by dominant failure type.
     code = 10
@@ -63,14 +79,32 @@ def build_gate_result(mode: str, failures: list[GateFailure]) -> GateResult:
     elif any("high_risk" in r for r in rules):
         code = 11
 
-    return GateResult(mode=mode, passed=False, exit_code=code, failures=failures)
+    return GateResult(
+        mode=mode,
+        passed=False,
+        exit_code=code,
+        failures=failures,
+        policy_context=policy_context,
+        approval_trail_file=approval_trail_file,
+    )
 
 
-def run_gate_flow(mode: str, failures: list[GateFailure], out_dir: Path) -> tuple[GateResult, Path]:
+def run_gate_flow(
+    mode: str,
+    failures: list[GateFailure],
+    out_dir: Path,
+    policy_context: dict[str, Any] | None = None,
+    approval_trail_file: str | None = None,
+) -> tuple[GateResult, Path]:
     state: GateState = {"result": None, "out_path": None}
 
     def _build_result_node(s: GateState) -> GateState:
-        s["result"] = build_gate_result(mode=mode, failures=failures)
+        s["result"] = build_gate_result(
+            mode=mode,
+            failures=failures,
+            policy_context=policy_context,
+            approval_trail_file=approval_trail_file,
+        )
         return s
 
     def _write_result_node(s: GateState) -> GateState:

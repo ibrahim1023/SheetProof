@@ -63,6 +63,19 @@ def _validate_config(config: dict[str, Any]) -> None:
         if v not in ALLOWED_SEVERITIES:
             raise ValueError(f"Invalid severity `{v}` for `{k}`")
 
+    packs = config.get("policy_packs", {})
+    if not isinstance(packs, dict):
+        raise ValueError("policy_packs must be a mapping")
+    for pack_name, pack_cfg in packs.items():
+        if not isinstance(pack_cfg, dict):
+            raise ValueError(f"policy_packs.{pack_name} must be a mapping")
+        metadata = pack_cfg.get("metadata")
+        if not isinstance(metadata, dict):
+            raise ValueError(f"policy_packs.{pack_name}.metadata must be a mapping")
+        for field in ("version", "owner", "rationale", "updated_at"):
+            if not isinstance(metadata.get(field), str) or not metadata.get(field):
+                raise ValueError(f"policy_packs.{pack_name}.metadata.{field} must be a non-empty string")
+
     llm = config.get("llm", {})
     if llm and not isinstance(llm, dict):
         raise ValueError("llm must be a mapping when provided")

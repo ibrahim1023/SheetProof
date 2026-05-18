@@ -6,6 +6,7 @@ import zipfile
 from openpyxl import load_workbook
 
 from sheetproof.reproducibility import write_stable_json
+from sheetproof.workbook.attestation import WARNING_TAXONOMY
 from sheetproof.workbook.metadata import extract_workbook_metadata
 from sheetproof.workbook.models import CellRecord, SheetIndex, WorkbookIndex, utc_now_iso
 
@@ -98,7 +99,10 @@ def parse_workbook(path: Path, deterministic: bool = False) -> WorkbookIndex:
     external_links = _extract_external_links(wb)
 
     warning_codes = _detect_unsupported_feature_codes(path)
-    warnings = [f"Unsupported feature detected: {code}" for code in warning_codes]
+    warnings = [
+        f"Unsupported feature detected: {code} - {WARNING_TAXONOMY.get(code, 'Unknown unsupported feature')}"
+        for code in warning_codes
+    ]
 
     return WorkbookIndex(
         workbook=path.name,
