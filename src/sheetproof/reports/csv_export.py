@@ -33,12 +33,12 @@ def write_risk_cells_csv(findings: list[Finding], out_dir: Path) -> Path:
                 item.sheet,
                 item.cell,
                 item.title,
-                item.risk_score,
+                str(item.risk_score),
                 item.deterministic_reason,
                 ";".join(item.source_cells),
                 " -> ".join(item.dependency_path),
                 ";".join(item.impacted_outputs),
-                item.path_depth,
+                str(item.path_depth),
             ]
         )
     write_stable_csv(out_file, rows)
@@ -55,9 +55,9 @@ def write_assumption_register_csv(assumptions: list[Assumption], out_dir: Path) 
                 a.sheet,
                 a.cell,
                 a.label,
-                a.value,
+                str(a.value),
                 ";".join(a.downstream_cells),
-                a.changed_from_previous_version,
+                str(a.changed_from_previous_version),
             ]
         )
     write_stable_csv(out_file, rows)

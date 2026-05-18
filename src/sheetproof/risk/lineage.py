@@ -28,10 +28,11 @@ def _shortest_path(forward: dict[str, list[str]], start: str, goal: str) -> list
             prev[nxt] = cur
             if nxt == goal:
                 path = [goal]
-                p = cur
+                p: str | None = cur
                 while p is not None:
                     path.append(p)
-                    p = prev[p]
+                    next_p = prev[p]
+                    p = next_p
                 return list(reversed(path))
             q.append(nxt)
     return []

@@ -124,7 +124,7 @@ def detect_hardcoded_override_findings(
     sev = _sev(risk_policy, "hardcoded_override", "medium")
 
     for sheet in index.sheets:
-        by_row = {}
+        by_row: dict[int, list[Any]] = {}
         for c in sheet.cells:
             row = int("".join(ch for ch in c.cell if ch.isdigit()))
             by_row.setdefault(row, []).append(c)

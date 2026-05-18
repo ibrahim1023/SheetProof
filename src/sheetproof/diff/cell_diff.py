@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from typing import TypedDict
 from typing import Any
 
 from sheetproof.workbook.models import WorkbookIndex
@@ -42,8 +43,8 @@ def _assumption_like_label(label: str | None) -> bool:
     return any(k in low for k in keywords)
 
 
-def _build_cell_map(index: WorkbookIndex) -> dict[tuple[str, str], dict[str, Any]]:
-    out: dict[tuple[str, str], dict[str, Any]] = {}
+def _build_cell_map(index: WorkbookIndex) -> dict[tuple[str, str], CellInfo]:
+    out: dict[tuple[str, str], CellInfo] = {}
     for sheet in index.sheets:
         labels_by_row: dict[int, str] = {}
         for c in sheet.cells:
@@ -77,6 +78,8 @@ def diff_cells(
         new = new_map.get((sheet, cell))
 
         if old is None:
+            if new is None:
+                continue
             changes.append(
                 CellChange(
                     sheet=sheet,
@@ -147,3 +150,7 @@ def diff_cells(
             )
 
     return changes
+class CellInfo(TypedDict):
+    value: Any
+    formula: str | None
+    label: str | None
