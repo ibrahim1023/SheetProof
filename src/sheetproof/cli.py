@@ -5,6 +5,11 @@ import uuid
 import typer
 
 from sheetproof.assumptions.detector import detect_assumptions
+from sheetproof.benchmark import (
+    compare_benchmark_to_baseline,
+    run_audit_benchmark,
+    write_benchmark_summary,
+)
 from sheetproof.config.loader import load_config
 from sheetproof.diff.workbook_diff import compute_workbook_diff, render_diff_summary, write_workbook_diff
 from sheetproof.formulas.extractor import extract_formula_inventory, write_formula_map
@@ -325,6 +330,36 @@ def eval_explain(
     )
     if summary["pass_rate"] < min_pass_rate:
         raise typer.Exit(code=21)
+
+
+@app.command("benchmark-audit")
+def benchmark_audit(
+    workbook: Path = typer.Option(..., "--workbook"),
+    runs: int = typer.Option(5, "--runs"),
+    output: Path = typer.Option(Path("evals/results/audit_benchmark_latest.json"), "--output"),
+    baseline: Path | None = typer.Option(
+        None, "--baseline", help="Optional baseline JSON produced by benchmark-audit."
+    ),
+    max_regression_pct: float = typer.Option(
+        25.0, "--max-regression-pct", help="Maximum allowed p95 runtime regression percentage."
+    ),
+) -> None:
+    """Benchmark deterministic audit runtime and optionally gate against a baseline."""
+    if not workbook.exists():
+        raise typer.BadParameter(f"Workbook not found: {workbook}")
+    summary = run_audit_benchmark(workbook=workbook, runs=runs)
+    out = write_benchmark_summary(summary, output)
+    typer.echo(f"Benchmark written: {out}")
+    typer.echo(
+        f"Runtime ms: min={summary.runtime_ms['min_ms']} avg={summary.runtime_ms['avg_ms']} "
+        f"p95={summary.runtime_ms['p95_ms']} max={summary.runtime_ms['max_ms']}"
+    )
+    if baseline is not None:
+        try:
+            compare_benchmark_to_baseline(summary, baseline, max_regression_pct=max_regression_pct)
+        except (ValueError, RuntimeError) as exc:
+            typer.echo(f"Benchmark regression gate failed: {exc}")
+            raise typer.Exit(code=22) from exc
 
 
 if __name__ == "__main__":

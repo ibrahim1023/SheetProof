@@ -43,6 +43,8 @@ sheetproof gate --workbook workbook.xlsx --max-high-risk-findings 5 --max-extern
 sheetproof gate --old-workbook old.xlsx --new-workbook new.xlsx --max-new-hidden-sheets 0
 sheetproof explain workbook.xlsx --cell "Summary!F12"
 sheetproof eval-explain --dataset evals/datasets/explain_schema_cases.json --output evals/results/explain_eval_results.json
+sheetproof benchmark-audit --workbook examples/benchmark_medium.xlsx --runs 5 --output evals/results/audit_benchmark_latest.json
+sheetproof benchmark-audit --workbook examples/benchmark_medium.xlsx --runs 3 --baseline evals/results/audit_benchmark_baseline.json --max-regression-pct 150
 ```
 
 `explain` requirements:
@@ -83,6 +85,7 @@ If `local_only: true`, hosted providers are blocked.
 - `traces.jsonl`
 - `explanations.json`
 - `gate-result.json`
+- `audit_benchmark_baseline.json` / `audit_benchmark_latest.json`
 
 ## Policy Packs
 

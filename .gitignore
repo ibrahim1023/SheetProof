@@ -16,6 +16,7 @@ risk-cells.csv
 formula-map.json
 dependency-graph.json
 assumption-register.csv
+evals/results/audit_benchmark_latest.json
 
 # Local-only planning/context files
 AGENTS.md

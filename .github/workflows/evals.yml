@@ -21,3 +21,10 @@ jobs:
         run: pytest -q
       - name: Run explanation schema eval gate
         run: sheetproof eval-explain --min-pass-rate 0.5
+      - name: Run audit benchmark regression gate
+        run: |
+          sheetproof benchmark-audit \
+            --workbook examples/benchmark_medium.xlsx \
+            --runs 3 \
+            --baseline evals/results/audit_benchmark_baseline.json \
+            --max-regression-pct 150
