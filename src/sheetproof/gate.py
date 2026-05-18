@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from typing import TypedDict
 
-from sheetproof.orchestration.graph import GraphState, run_state_graph
+from langgraph.graph import END, StateGraph
 from sheetproof.reproducibility import write_stable_json
 
 
@@ -36,6 +37,11 @@ class GateResult:
         }
 
 
+class GateState(TypedDict):
+    result: GateResult | None
+    out_path: Path | None
+
+
 def write_gate_result(result: GateResult, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "gate-result.json"
@@ -61,21 +67,29 @@ def build_gate_result(mode: str, failures: list[GateFailure]) -> GateResult:
 
 
 def run_gate_flow(mode: str, failures: list[GateFailure], out_dir: Path) -> tuple[GateResult, Path]:
-    result: GateResult | None = None
-    out_path: Path | None = None
+    state: GateState = {"result": None, "out_path": None}
 
-    def _node_runner(state: GraphState) -> str | None:
-        nonlocal result, out_path
-        if state.node == "build_result":
-            result = build_gate_result(mode=mode, failures=failures)
-            return "write_result"
-        if state.node == "write_result":
-            assert result is not None
-            out_path = write_gate_result(result, out_dir)
-            return None
-        raise RuntimeError(f"Unknown gate node `{state.node}`")
+    def _build_result_node(s: GateState) -> GateState:
+        s["result"] = build_gate_result(mode=mode, failures=failures)
+        return s
 
-    run_state_graph(start_node="build_result", max_steps=4, run_node=_node_runner)
-    assert result is not None
-    assert out_path is not None
+    def _write_result_node(s: GateState) -> GateState:
+        result = s.get("result")
+        if not isinstance(result, GateResult):
+            raise RuntimeError("Gate result missing in state")
+        s["out_path"] = write_gate_result(result, out_dir)
+        return s
+
+    graph = StateGraph(GateState)
+    graph.add_node("build_result", _build_result_node)  # type: ignore[call-overload]
+    graph.add_node("write_result", _write_result_node)  # type: ignore[call-overload]
+    graph.set_entry_point("build_result")
+    graph.add_edge("build_result", "write_result")
+    graph.add_edge("write_result", END)
+
+    final_state = graph.compile().invoke(state)
+    result = final_state.get("result")
+    out_path = final_state.get("out_path")
+    if not isinstance(result, GateResult) or not isinstance(out_path, Path):
+        raise RuntimeError("Gate flow failed to produce result artifact")
     return result, out_path

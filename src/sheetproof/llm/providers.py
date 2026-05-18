@@ -1,52 +1,51 @@
 from __future__ import annotations
 
-import json
 import os
-import time
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from typing import Any
+
+from litellm import completion
 
 
 class ProviderCallError(RuntimeError):
     pass
 
 
-def _post_json(
-    url: str,
-    payload: dict,
-    headers: dict[str, str],
+def _as_text(resp: Any) -> str:
+    try:
+        choices = getattr(resp, "choices", None) or []
+        if choices:
+            msg = getattr(choices[0], "message", None) or {}
+            content = getattr(msg, "content", None) if not isinstance(msg, dict) else msg.get("content")
+            if isinstance(content, str) and content.strip():
+                return content.strip()
+    except Exception:  # noqa: BLE001
+        pass
+    raise ProviderCallError("LiteLLM response did not include text output")
+
+
+def _call_litellm(
+    provider_model: str,
+    prompt: str,
     timeout: int = 40,
     max_retries: int = 2,
-) -> dict:
-    req = Request(
-        url=url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", **headers},
-        method="POST",
-    )
-
-    last_exc: Exception | None = None
-    for attempt in range(max_retries + 1):
-        try:
-            with urlopen(req, timeout=timeout) as resp:  # noqa: S310
-                return json.loads(resp.read().decode("utf-8"))
-        except HTTPError as exc:
-            last_exc = exc
-            status = getattr(exc, "code", 0)
-            # Retry rate-limit and transient server errors.
-            if status in {429, 500, 502, 503, 504} and attempt < max_retries:
-                time.sleep(min(0.5 * (2**attempt), 2.0))
-                continue
-            raise ProviderCallError(f"HTTP error from provider: status={status}") from exc
-        except URLError as exc:
-            last_exc = exc
-            if attempt < max_retries:
-                time.sleep(min(0.5 * (2**attempt), 2.0))
-                continue
-            raise ProviderCallError("Network error calling provider") from exc
-
-    assert last_exc is not None
-    raise ProviderCallError(f"Provider call failed after retries: {last_exc}")
+    api_base: str | None = None,
+    api_key: str | None = None,
+) -> str:
+    kwargs: dict[str, Any] = {
+        "model": provider_model,
+        "messages": [{"role": "user", "content": prompt}],
+        "timeout": timeout,
+        "num_retries": max_retries,
+    }
+    if api_base:
+        kwargs["api_base"] = api_base
+    if api_key:
+        kwargs["api_key"] = api_key
+    try:
+        resp = completion(**kwargs)
+        return _as_text(resp)
+    except Exception as exc:  # noqa: BLE001
+        raise ProviderCallError(f"LiteLLM provider call failed: {exc}") from exc
 
 
 def call_openai(
@@ -60,29 +59,14 @@ def call_openai(
     key = api_key or os.getenv("OPENAI_API_KEY")
     if not key:
         raise RuntimeError("OPENAI_API_KEY is required for provider=openai")
-    root = (base_url or "https://api.openai.com/v1").rstrip("/")
-    payload = {
-        "model": model,
-        "input": prompt,
-    }
-    body = _post_json(
-        f"{root}/responses",
-        payload,
-        {"Authorization": f"Bearer {key}"},
+    return _call_litellm(
+        provider_model=f"openai/{model}",
+        prompt=prompt,
         timeout=timeout,
         max_retries=max_retries,
+        api_base=base_url,
+        api_key=key,
     )
-
-    out = body.get("output", [])
-    for item in out:
-        for part in item.get("content", []):
-            text = part.get("text")
-            if text:
-                return str(text)
-    text = body.get("output_text")
-    if text:
-        return str(text)
-    raise ProviderCallError("OpenAI response did not include text output")
 
 
 def call_anthropic(
@@ -95,28 +79,13 @@ def call_anthropic(
     key = api_key or os.getenv("ANTHROPIC_API_KEY")
     if not key:
         raise RuntimeError("ANTHROPIC_API_KEY is required for provider=anthropic")
-
-    payload = {
-        "model": model,
-        "max_tokens": 1024,
-        "messages": [{"role": "user", "content": prompt}],
-    }
-    body = _post_json(
-        "https://api.anthropic.com/v1/messages",
-        payload,
-        {
-            "x-api-key": key,
-            "anthropic-version": "2023-06-01",
-        },
+    return _call_litellm(
+        provider_model=f"anthropic/{model}",
+        prompt=prompt,
         timeout=timeout,
         max_retries=max_retries,
+        api_key=key,
     )
-    content = body.get("content", [])
-    for part in content:
-        text = part.get("text")
-        if text:
-            return str(text)
-    raise ProviderCallError("Anthropic response did not include text output")
 
 
 def call_gemini(
@@ -129,18 +98,10 @@ def call_gemini(
     key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not key:
         raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY is required for provider=gemini")
-
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+    return _call_litellm(
+        provider_model=f"gemini/{model}",
+        prompt=prompt,
+        timeout=timeout,
+        max_retries=max_retries,
+        api_key=key,
     )
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
-    body = _post_json(url, payload, headers={}, timeout=timeout, max_retries=max_retries)
-
-    candidates = body.get("candidates", [])
-    for cand in candidates:
-        parts = cand.get("content", {}).get("parts", [])
-        for p in parts:
-            text = p.get("text")
-            if text:
-                return str(text)
-    raise ProviderCallError("Gemini response did not include text output")
