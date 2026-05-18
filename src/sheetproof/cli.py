@@ -22,6 +22,7 @@ from sheetproof.evals import run_explanation_eval, write_reliability_metrics
 from sheetproof.llm.local_explainer import explain_cell
 from sheetproof.observability import write_trace
 from sheetproof.policy import effective_policy_context
+from sheetproof.ragas_eval import run_ragas_eval
 from sheetproof.reports.approval_trail import write_approval_trail
 from sheetproof.reports.csv_export import write_assumption_register_csv, write_risk_cells_csv
 from sheetproof.reports.json_report import write_json_report
@@ -457,6 +458,21 @@ def reliability_report(
     )
     if metrics["pass_rate"] < min_pass_rate or metrics["refusal_correctness_rate"] < min_refusal_rate:
         raise typer.Exit(code=23)
+
+
+@app.command("eval-ragas")
+def eval_ragas(
+    dataset: Path = typer.Option(Path("evals/datasets/explain_schema_cases.json"), "--dataset"),
+    output: Path = typer.Option(Path("evals/results/ragas_metrics.json"), "--output"),
+) -> None:
+    """Run optional Ragas metrics for retrieval-style evaluation cases."""
+    if not dataset.exists():
+        raise typer.BadParameter(f"Dataset not found: {dataset}")
+    payload = run_ragas_eval(dataset, output)
+    typer.echo(
+        f"Ragas eval written: {output} status={payload['status']} "
+        f"applicable_cases={payload['applicable_cases']}"
+    )
 
 
 if __name__ == "__main__":

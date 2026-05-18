@@ -85,6 +85,7 @@ sheetproof gate --old-workbook old.xlsx --new-workbook new.xlsx --max-new-hidden
 sheetproof explain workbook.xlsx --cell "Summary!F12"
 sheetproof eval-explain --dataset evals/datasets/explain_schema_cases.json --output evals/results/explain_eval_results.json
 sheetproof reliability-report --eval-results evals/results/explain_eval_results.json --output evals/results/reliability_metrics.json --min-pass-rate 0.4 --min-refusal-rate 0.5
+sheetproof eval-ragas --dataset evals/datasets/explain_schema_cases.json --output evals/results/ragas_metrics.json
 sheetproof benchmark-audit --workbook examples/benchmark_medium.xlsx --runs 5 --output evals/results/audit_benchmark_latest.json
 sheetproof benchmark-audit --workbook examples/benchmark_small.xlsx --runs 3 --baseline evals/results/audit_benchmark_small_baseline.json --max-regression-pct 100
 sheetproof benchmark-audit --workbook examples/benchmark_medium.xlsx --runs 3 --baseline evals/results/audit_benchmark_medium_baseline.json --max-regression-pct 120
@@ -152,6 +153,7 @@ npx promptfoo@latest eval -c evals/promptfooconfig.yaml
 - `evals/results/audit_benchmark_large_baseline.json`
 - `evals/results/audit_benchmark_latest.json` (local/runtime; gitignored)
 - `evals/results/reliability_metrics.json`
+- `evals/results/ragas_metrics.json` (optional; status may be `not_applicable` or `unavailable`)
 
 ## Policy Packs
 
