@@ -28,6 +28,8 @@ def write_json_report(
             "hidden_sheets": index.hidden_sheets,
             "very_hidden_sheets": index.very_hidden_sheets,
             "external_links": index.external_links,
+            "attestation_status": index.attestation_status,
+            "warning_codes": index.warning_codes,
         },
         "summary": {
             "formula_cells": len(formulas),

@@ -32,6 +32,8 @@ def write_markdown_report(
         f"- Hidden sheets: {', '.join(index.hidden_sheets) if index.hidden_sheets else 'None'}",
         f"- Very hidden sheets: {', '.join(index.very_hidden_sheets) if index.very_hidden_sheets else 'None'}",
         f"- External links: {', '.join(index.external_links) if index.external_links else 'None'}",
+        f"- Attestation status: {index.attestation_status}",
+        f"- Unsupported warning codes: {', '.join(index.warning_codes) if index.warning_codes else 'None'}",
         "",
         "## High-Risk Findings",
     ]

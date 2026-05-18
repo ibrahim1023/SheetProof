@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import zipfile
 
 from openpyxl import Workbook
 from typer.testing import CliRunner
@@ -116,3 +117,25 @@ def test_gate_passes_when_thresholds_allow(tmp_path: Path, monkeypatch) -> None:
     assert any('"event": "gate_complete"' in line for line in traces)
     assert any('"request_id":' in line for line in traces)
     assert any('"latency_ms":' in line for line in traces)
+
+
+def test_gate_fails_on_unattested_feature_threshold(tmp_path: Path, monkeypatch) -> None:
+    p = tmp_path / "audit-macro.xlsx"
+    _make_audit_workbook(p)
+    with zipfile.ZipFile(p, "a") as zf:
+        zf.writestr("xl/vbaProject.bin", b"dummy")
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "gate",
+            "--workbook",
+            str(p),
+            "--max-unattested-features",
+            "0",
+        ],
+    )
+    assert result.exit_code != 0
+    payload = json.loads(Path(".sheetproof/gate-result.json").read_text(encoding="utf-8"))
+    assert any(f["rule"] == "max_unattested_features" for f in payload["failures"])

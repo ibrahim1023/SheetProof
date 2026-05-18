@@ -152,6 +152,7 @@ def gate(
     ),
     max_high_risk_findings: int = typer.Option(999999, "--max-high-risk-findings"),
     max_external_references: int = typer.Option(999999, "--max-external-references"),
+    max_unattested_features: int = typer.Option(999999, "--max-unattested-features"),
     max_new_hidden_sheets: int = typer.Option(999999, "--max-new-hidden-sheets"),
     max_high_risk_changed_cells: int = typer.Option(999999, "--max-high-risk-changed-cells"),
     fail_on_warning: bool = typer.Option(False, "--fail-on-warning"),
@@ -224,6 +225,16 @@ def gate(
                     threshold=max_external_references,
                     reason="External reference count exceeds threshold",
                     evidence=[f"{f.sheet}!{f.cell}" for f in external_refs[:10]],
+                )
+            )
+        if len(index.warning_codes) > max_unattested_features:
+            failures.append(
+                GateFailure(
+                    rule="max_unattested_features",
+                    actual=len(index.warning_codes),
+                    threshold=max_unattested_features,
+                    reason="Unsupported/unattested feature count exceeds threshold",
+                    evidence=index.warning_codes[:10],
                 )
             )
         if fail_on_warning and warning_findings:

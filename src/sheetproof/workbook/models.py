@@ -41,6 +41,8 @@ class WorkbookIndex:
     metadata: dict[str, Any]
     sheets: list[SheetIndex]
     warnings: list[str]
+    warning_codes: list[str]
+    attestation_status: str
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

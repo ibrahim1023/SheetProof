@@ -1,4 +1,5 @@
 from pathlib import Path
+import zipfile
 
 from openpyxl import Workbook
 from openpyxl.comments import Comment
@@ -52,3 +53,16 @@ def test_write_workbook_index_creates_json(tmp_path: Path) -> None:
     assert out_path.exists()
     text = out_path.read_text(encoding="utf-8")
     assert "simple.xlsx" in text
+
+
+def test_parse_workbook_sets_cannot_attest_for_unsupported_features(tmp_path: Path) -> None:
+    wb = Workbook()
+    workbook_path = tmp_path / "macro_like.xlsx"
+    wb.save(workbook_path)
+
+    with zipfile.ZipFile(workbook_path, "a") as zf:
+        zf.writestr("xl/vbaProject.bin", b"dummy")
+
+    index = parse_workbook(workbook_path)
+    assert index.attestation_status == "cannot_attest"
+    assert "UNSUPPORTED:VBA_MACROS" in index.warning_codes

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import zipfile
 
 from openpyxl import load_workbook
 
@@ -17,6 +18,25 @@ def _extract_external_links(wb) -> list[str]:
         if target:
             links.append(str(target))
     return sorted(set(links))
+
+
+def _detect_unsupported_feature_codes(path: Path) -> list[str]:
+    codes: set[str] = set()
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            names = set(zf.namelist())
+    except Exception:  # noqa: BLE001
+        return ["UNSUPPORTED:PACKAGE_READ_ERROR"]
+
+    if "xl/vbaProject.bin" in names:
+        codes.add("UNSUPPORTED:VBA_MACROS")
+    if any(name.startswith("xl/pivotTables/") for name in names):
+        codes.add("UNSUPPORTED:PIVOT_TABLES")
+    if any(name.startswith("xl/connections") for name in names):
+        codes.add("UNSUPPORTED:DATA_CONNECTIONS")
+    if any(name.startswith("xl/slicers/") for name in names):
+        codes.add("UNSUPPORTED:SLICERS")
+    return sorted(codes)
 
 
 def parse_workbook(path: Path, deterministic: bool = False) -> WorkbookIndex:
@@ -77,6 +97,9 @@ def parse_workbook(path: Path, deterministic: bool = False) -> WorkbookIndex:
     defined_names = sorted(list(wb.defined_names.keys()))
     external_links = _extract_external_links(wb)
 
+    warning_codes = _detect_unsupported_feature_codes(path)
+    warnings = [f"Unsupported feature detected: {code}" for code in warning_codes]
+
     return WorkbookIndex(
         workbook=path.name,
         workbook_path=str(path.resolve()),
@@ -89,7 +112,9 @@ def parse_workbook(path: Path, deterministic: bool = False) -> WorkbookIndex:
         external_links=external_links,
         metadata=extract_workbook_metadata(wb),
         sheets=sheet_indexes,
-        warnings=[],
+        warnings=warnings,
+        warning_codes=warning_codes,
+        attestation_status="cannot_attest" if warning_codes else "fully_attested",
     )
 
 
